@@ -1,0 +1,8 @@
+stage,p50_ms,p95_ms,mean_ms,max_ms
+detect,0.803,1.234,0.886,3.238
+pnp_transform,0.027,0.046,0.030,0.077
+ekf,0.059,0.098,0.065,0.228
+pointing_setpoint,0.051,0.094,0.060,0.178
+compute_e2e,0.950,1.431,1.041,3.444
+added_alloc(capture+tx),,16.000,,
+projected_full_p95,,17.431,,
