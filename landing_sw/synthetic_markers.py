@@ -120,3 +120,30 @@ def render_view(agl_m, offset_xy=(0.0, 0.0), tilt_deg=0.0, yaw_deg=0.0,
     gt = config.Pose(t=t_wc.reshape(3).copy(), rvec=rvec.reshape(3).copy(),
                      frame="camera", valid=True, marker_id=config.OUTER_MARKER_ID)
     return img, gt
+
+
+if __name__ == "__main__":
+    """Render a few representative views and dump them as PNGs for visual inspection.
+
+    Run: python -m landing_sw.synthetic_markers
+    """
+    import argparse
+
+    p = argparse.ArgumentParser()
+    p.add_argument("--agl", type=float, default=5.0, help="altitude AGL in metres")
+    p.add_argument("--offset", type=float, nargs=2, default=(0.0, 0.0),
+                    metavar=("X", "Y"))
+    p.add_argument("--tilt", type=float, default=0.0)
+    p.add_argument("--yaw", type=float, default=0.0)
+    p.add_argument("--noise", type=float, default=2.0)
+    p.add_argument("--out", type=str, default=None,
+                    help="output PNG path (default: results/synthetic_marker_<agl>m.png)")
+    args = p.parse_args()
+
+    img, gt = render_view(args.agl, offset_xy=tuple(args.offset), tilt_deg=args.tilt,
+                          yaw_deg=args.yaw, noise_sigma=args.noise,
+                          rng=np.random.default_rng(0))
+    out = args.out or config.results_path(f"synthetic_marker_{args.agl:g}m.png")
+    cv2.imwrite(out, img)
+    print(f"wrote {out}  ({img.shape[1]}x{img.shape[0]}, AGL={args.agl} m, "
+          f"true t_cam={gt.t})")

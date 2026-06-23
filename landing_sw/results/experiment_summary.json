@@ -1,8 +1,8 @@
 {
   "latency": {
-    "compute_p95_ms": 1.431,
+    "compute_p95_ms": 1.58,
     "added_alloc_ms": 16,
-    "projected_full_p95_ms": 17.431,
+    "projected_full_p95_ms": 17.58,
     "target_ms": 33.0,
     "budget_ms": 66.0,
     "source": "SYNTHETIC_MODEL",
