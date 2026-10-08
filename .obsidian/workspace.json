@@ -83,8 +83,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "475109c8ed6659f5",
@@ -191,6 +190,22 @@
   },
   "active": "1a35595830070e5b",
   "lastOpenFiles": [
+    "datasheets/xl320_motor.html",
+    "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
+    "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
+    "datasheets/xl320_motor_files/icon_task10_Vmcy.webp",
+    "datasheets/xl320_motor_files/cm-550_product_Vmcy.png",
+    "datasheets/xl320_motor_files/p-series_Vmcy.webp",
+    "datasheets/xl320_motor_files/rh-p12-rn_Vmcy.webp",
+    "datasheets/xl320_motor_files/katex.min_Vmcy.css",
+    "datasheets/xl320_motor_files/Y-series_Vmcy.webp",
+    "datasheets/xl320_motor_files/icon_r_manager_Vmcy.webp",
+    "datasheets/xl320_motor_files/bioloid-premium_Vmcy.webp",
+    "datasheets/xl320_motor_files/ai-sapiens_Vmcy.webp",
+    "datasheets/xl320_motor_files/styles.66930f39_Vmcy.css",
+    "datasheets/xl320_motor_files/main.0b4c2229_Vmcy.js",
+    "datasheets/xl320_motor_files/runtime~main.21f2cf15_Vmcy.js",
+    "datasheets/xl320_motor_files",
     "october_demo_plan.md.tmp.105171.a1ea01988572",
     "notes.md",
     "october_demo_plan.md",
@@ -198,7 +213,6 @@
     "landing_sw/results/flightlog.sqlite-journal",
     "landing_sw/__pycache__/config.cpython-312.pyc.135129172261696",
     "curriculum/01_system_overview.md.tmp.74442.48f16a4ce53d",
-    "Pasted image 20260916112044.png",
     "curriculum/00_README.md",
     "notes/Untitled.md",
     "notes"
