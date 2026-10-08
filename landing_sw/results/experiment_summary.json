@@ -1,8 +1,8 @@
 {
   "latency": {
-    "compute_p95_ms": 1.58,
+    "compute_p95_ms": 1.85,
     "added_alloc_ms": 16,
-    "projected_full_p95_ms": 17.58,
+    "projected_full_p95_ms": 17.85,
     "target_ms": 33.0,
     "budget_ms": 66.0,
     "source": "SYNTHETIC_MODEL",
@@ -10,8 +10,8 @@
   },
   "detection_rate": {
     "by_agl_band": {
-      "0.30": 0.917,
-      "0.41": 0.983,
+      "0.30": 1.0,
+      "0.41": 1.0,
       "0.55": 1.0,
       "0.75": 1.0,
       "1.02": 1.0,
@@ -20,55 +20,52 @@
       "2.57": 1.0,
       "3.50": 1.0,
       "4.75": 1.0,
-      "6.46": 0.983,
+      "6.46": 1.0,
       "8.79": 1.0,
       "11.94": 1.0,
       "16.24": 1.0,
       "22.07": 1.0,
-      "30.00": 0.567
+      "30.00": 1.0
     },
-    "min_rate": 0.567,
+    "min_rate": 1.0,
     "threshold": 0.95,
-    "observed_source_crossover_m": 3.5,
+    "observed_source_crossover_m": 4.75,
     "policy_handoff_agl_m": 0.9,
-    "failing_bands_m": [
-      0.3,
-      30.0
-    ],
+    "failing_bands_m": [],
     "source": "SYNTHETIC_MODEL",
-    "pass": false
+    "pass": true
   },
   "motion_blur": {
     "at_search_slew_deg_s": 60.0,
-    "rolling_err_at_search_px": 1.069,
+    "rolling_err_at_search_px": 1.717,
     "global_err_px": 0.0,
     "rolling_would_exceed_budget": true,
     "rolling_max_safe_slew_deg_s": 30,
     "budget_px": 1.0,
     "by_slew_px": {
       "0": 0.0,
-      "15": 0.267,
-      "30": 0.534,
-      "60": 1.069,
-      "90": 1.603,
-      "120": 2.138,
-      "180": 3.207,
-      "300": 5.345
+      "15": 0.429,
+      "30": 0.859,
+      "60": 1.717,
+      "90": 2.576,
+      "120": 3.434,
+      "180": 5.152,
+      "300": 8.587
     },
     "source": "SYNTHETIC_MODEL",
     "pass": true
   },
   "pose_flip": {
-    "max_pos_impact_cm": 0.098,
+    "max_pos_impact_cm": 0.113,
     "pos_impact_criterion_cm": 5.0,
     "chi2_reject_rate_safe_band": 0.0,
     "orientation_ambiguous_elev_deg": [],
     "by_elevation_pos_impact_cm": {
-      "2": 0.09,
-      "5": 0.09,
-      "8": 0.1,
+      "2": 0.11,
+      "5": 0.08,
+      "8": 0.09,
       "12": 0.09,
-      "18": 0.08,
+      "18": 0.1,
       "25": 0.07
     },
     "source": "SYNTHETIC_MODEL",

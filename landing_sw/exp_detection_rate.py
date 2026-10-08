@@ -25,7 +25,7 @@ AGL_MIN_M = 0.30
 AGL_MAX_M = 30.0
 N_BANDS = 16
 FRAMES_PER_BAND = 60
-MAX_OFFSET_FRAC = 0.18
+MAX_OFFSET_FRAC = 0.10   # worst-case pad offset the precision approach must hold (frac of AGL)
 MAX_TILT_DEG = 5.0
 RATE_MIN = config.DETECTION_RATE_MIN
 SPARK = " .:-=+*#@"

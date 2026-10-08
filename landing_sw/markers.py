@@ -1,11 +1,15 @@
 """markers.py -- MarkerDetector for the nested-ArUco landing pad.
 
-detect(gray, est_agl_m) -> Pose. Detects the nested outer/inner ArUco pair via
-cv2.aruco, selects which marker to trust from est_agl_m / HANDOFF_AGL_M and which
-is actually visible (principle 5), solves the pose with SOLVEPNP_IPPE_SQUARE on
+1. detect(gray, est_agl_m) -> Pose. Detects the nested outer/inner ArUco pair via
+cv2.aruco, 
+2. Selects which marker to trust from est_agl_m / HANDOFF_AGL_M and which
+is actually visible (principle 5), 
+3. Solves the pose with SOLVEPNP_IPPE_SQUARE on
 the 4 corners, and rejects poses whose reprojection error exceeds REPROJ_ERR_MAX_PX
 -- the detector-side half of the pose-flip mitigation (principle 6; the EKF chi2
-gate is the other half). last_reproj_err is exposed for logging.
+gate is the other half). 
+
+4. last_reproj_err is exposed for logging.
 """
 
 from __future__ import annotations

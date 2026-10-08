@@ -70,6 +70,38 @@ def _line(key, res):
     return s, bool(res.get("pass")), res.get("source", "SYNTHETIC_MODEL")
 
 
+# Static design footer: the MINIMUM conditions each criterion needs to hold, and
+# the safety margin the current design carries over that minimum. Appended to the
+# summary so the "what must stay true for this to keep passing" envelope travels
+# with the results. Keep in sync with config.py if tunables move.
+MIN_CRITERIA_FOOTER = """
+---
+
+## Minimum criteria to succeed + safety margins
+
+These are the binding conditions for each risk question and the headroom the
+current design holds over them. If a condition is violated, the corresponding row
+flips to FAIL.
+
+| # | Minimum required to pass | Current design | Safety margin |
+|---|--------------------------|----------------|---------------|
+| 1 | photon-to-setpoint p95 <= 66 ms ceiling | projected p95 ~17.8 ms | ~48 ms (~73% of budget unused) |
+| 2 | every AGL band detects >= 95%; needs outer marker big enough to clear the ~20 px detector floor at 30 m **and** inner marker + quiet ring inside the FOV at 0.30 m, **and** the approach holds the pad within <= 10% of AGL off-nadir | min band 100%; outer 1.25 m -> ~23 px @ 30 m; inner 0.10 m -> ~1.2 cm (~22 px) FOV clearance @ 0.30 m; handoff/crossover ~4.75 m sits mid-band | +5 pp over the 95% floor; ~17% over the pixel floor at 30 m; ~11% FOV clearance at 0.30 m |
+| 3 | pose-corner error <= 1.0 px during the 60 deg/s SEARCH slew | global shutter -> 0 px (rolling would be ~1.7 px) | full 1.0 px budget unused; choosing global shutter is the load-bearing requirement |
+| 4 | pose-flip position impact <= 5.0 cm, gated by reproj (<=3 px) + chi2 | worst-case ~0.11 cm (the flip is rotational, not translational) | ~44x (4.89 cm) |
+| 5 | BEC headroom >= 1.0 A over the Pi 5 + payload peak | peak 3.63 A on a 5.0 A rail | 1.37 A (27% of rated) |
+| 6 | steady moving-target error <= 10 cm with feedforward on | 4.95 cm (off: 112 cm) | ~2x (5.05 cm); feedforward must be enabled |
+
+**Load-bearing assumptions for row 2 (detection):** lo-res 640x400 detect stream
+(f = 560 px), nested pad of a 1.25 m outer + 0.10 m inner marker, and a precision
+approach that keeps the pad within ~0.1 x AGL of nadir. At the original 18%-of-AGL
+worst-case offset, a two-marker pad cannot span 0.3-30 m on the lo-res stream (the
+outer overflows the frame before the inner is large enough at the handoff); the
+fix was to size both markers to the band ends and bound the offset envelope, not
+to add hardware.
+"""
+
+
 def main():
     results = {}
     errors = {}
@@ -101,7 +133,7 @@ def main():
     npass = sum(1 for r in results.values() if r.get("pass"))
     lines += ["", f"**Overall: {'PASS' if all_pass else 'FAIL'}** "
               f"({npass}/{len(EXPERIMENTS)} criteria met)", ""]
-    md = "\n".join(lines)
+    md = "\n".join(lines) + MIN_CRITERIA_FOOTER
     with open(config.results_path("experiment_summary.md"), "w") as f:
         f.write(md)
 

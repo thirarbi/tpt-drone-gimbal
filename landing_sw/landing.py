@@ -27,6 +27,7 @@ class LandingController:
         px, py, _ = (float(v) for v in marker_pos_body)
         vtx, vty, _ = (float(v) for v in marker_vel_body)   # target absolute vel
 
+        # FEEDFORWARD STRATEGY HERE!
         # Horizontal: proportional-to-error + velocity feedforward (principle 2).
         vx = config.KP_HORIZ * px + config.FEEDFORWARD_GAIN * vtx
         vy = config.KP_HORIZ * py + config.FEEDFORWARD_GAIN * vty

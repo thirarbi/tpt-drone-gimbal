@@ -34,12 +34,12 @@ plant → sensor → back to error. Map this system onto it:
    │  camera  │──────────▶ │ MarkerDet │─────────────▶ │   EKF    │─────────────▶│  Landing  │
    │ (sensor) │  640x400   │ +PnP      │  (camera fr.) │ (filter) │   (body fr.) │ controller│
    └──────────┘   gray     └───────────┘               └──────────┘              └─────┬─────┘
-        ▲                       │frames.py                                              │ v_cmd
-        │                       │(camera→body)                                          ▼
+        ▲                       │frames.py                                             │ v_cmd
+        │                       │(camera→body)                                         ▼
         │                                                                        ┌───────────┐
         │                                                                        │ ArduCopter│
-        └──────────────── drone physically moves ◀──────────────────────────────│ (plant)   │
-                                                                                  └───────────┘
+        └──────────────── drone physically moves ◀───────────────────────────────│ (plant)   │
+                                                                                 └───────────┘
 ```
 
 - **Sensor**: `markers.py` (detect) + `synthetic_markers.py` (the fake camera in sim).
@@ -50,26 +50,13 @@ plant → sensor → back to error. Map this system onto it:
 - **Controller**: `landing.py` (vehicle velocity) + `pointing.py` (gimbal). (Module 05.)
 - **Plant**: the drone, simulated by a kinematic integrator in `main.py`/`sitl_harness.py`,
   or real ArduCopter via `mavlink_iface.py`.
-- **Supervisor**: `fsm.py` decides *which* of the above run, based on whether the
-  marker is visible, the altitude, and the pilot's mode switch. (Module 07.)
-
-Crucially, this is a **cascaded / nested** architecture, which your Multivariable
-Control course gives you the vocabulary for: a fast inner loop (ArduCopter's own
-attitude + EKF3 controllers, running on the F405 at hundreds of Hz) wrapped by a
-slow outer loop (this companion software, running at the 30 fps camera rate). The
-companion never touches motors directly; it hands ArduCopter *velocity setpoints*
-and lets the autopilot's tuned inner loops execute them.
+- **Supervisor**: `fsm.py` decides *which* of the above run, based on marker visibility, altitude, and mode (Module 07).
 
 ## The 7 design principles
 
-The docstrings repeatedly cite "principle N". Here is the consolidated list,
-reconstructed from the code, with the engineering reason each matters. Keep this
-table next to you for the whole course — every module is an elaboration of one or
-more of these.
-
-| # | Principle | Where enforced | Why it's load-bearing |
-|---|-----------|----------------|------------------------|
-| 1 | **Latency, not loop rate, is the benchmark.** The metric is *photon-to-setpoint* end-to-end delay: target 33 ms (one frame), ceiling 66 ms. | `config.LATENCY_*`, `latency_bench.py` | A 30 Hz loop with 200 ms of latency flies blind. Phase lag from latency is what destabilizes a tracking loop — you know this as the phase margin story from Automatic Control. |
+| # | Principle | Where | Why it matters |
+|---|-----------|-------|-----------------|
+| 1 | **Latency, not loop rate, is the benchmark.** The system budgets photon-to-setpoint latency (target 33 ms, ceiling 66 ms), not just camera FPS. | `config.LATENCY_ALLOC_MS`, `latency_bench.py` | A 30 Hz loop with 200 ms of latency flies blind. Phase lag from latency is what destabilizes a tracking loop — you know this as the phase margin story from Automatic Control. |
 | 2 | **Velocity feedforward, not just proportional.** `v_cmd = Kp·error + G_ff·v_target_absolute`. | `landing.py`, `config.FEEDFORWARD_GAIN` | A pure P controller *lags a moving target* by `v_target/Kp` (≈1.1 m for the defaults — it never catches up). Feedforward cancels that lag. This is the single idea that makes landing on a *moving* pad work at 30 fps. |
 | 3 | **The EKF estimates the target's ABSOLUTE velocity by folding ego-motion into `predict`.** State is relative position + target absolute velocity. | `ekf.py`, `fsm.py` | The "obvious" alternative (`v_target = v_rel + v_drone` computed *after* the filter) mixes a lagged perception estimate with a fresh autopilot velocity on *different time bases* and injects positive feedback. Putting ego-motion inside `predict` keeps one time base. |
 | 4 | **The companion only bridges 30 fps gaps; it does NOT run a high-rate vehicle filter.** During marker loss, ArduCopter's onboard EKF3 dead-reckons the vehicle; this filter only coasts the *marker* estimate. | `ekf.py`, `fsm.py` COASTING state | Don't reinvent the autopilot's job. The companion's filter is small (6 states) and single-purpose. |

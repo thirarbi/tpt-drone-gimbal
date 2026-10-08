@@ -48,8 +48,8 @@ CAM_DIST = [0, 0, 0, 0, 0]                            # MEASURE k1,k2,p1,p2,k3
 ARUCO_DICT          = "DICT_5X5_100"
 OUTER_MARKER_ID     = 23
 INNER_MARKER_ID     = 7
-OUTER_MARKER_SIDE_M = 0.780
-INNER_MARKER_SIDE_M = 0.090
+OUTER_MARKER_SIDE_M = 1.250   # sized so it clears ~23 px at AGL_MAX (30 m) on DETECT_RES
+INNER_MARKER_SIDE_M = 0.100   # sized to bridge the handoff yet fit in FOV at AGL_MIN (0.3 m)
 HANDOFF_AGL_M       = 0.90              # below this, trust inner marker only
 
 # Detector reprojection-error gate (principle 6); px in DETECT_RES.
