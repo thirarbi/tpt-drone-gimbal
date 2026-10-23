@@ -13,6 +13,20 @@
             "state": {
               "type": "markdown",
               "state": {
+                "file": "notes.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "notes"
+            }
+          },
+          {
+            "id": "4729e003d2980b75",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
                 "file": "october_demo_plan.md",
                 "mode": "preview",
                 "source": false
@@ -21,7 +35,8 @@
               "title": "october_demo_plan"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -83,7 +98,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "475109c8ed6659f5",
@@ -188,8 +204,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "1a35595830070e5b",
+  "active": "4729e003d2980b75",
   "lastOpenFiles": [
+    "notes.md",
+    "companion_computer.md",
+    "october_demo_plan.md",
     "datasheets/xl320_motor.html",
     "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
     "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
@@ -207,14 +226,11 @@
     "datasheets/xl320_motor_files/runtime~main.21f2cf15_Vmcy.js",
     "datasheets/xl320_motor_files",
     "october_demo_plan.md.tmp.105171.a1ea01988572",
-    "notes.md",
-    "october_demo_plan.md",
     "curriculum/01_system_overview.md",
     "landing_sw/results/flightlog.sqlite-journal",
     "landing_sw/__pycache__/config.cpython-312.pyc.135129172261696",
     "curriculum/01_system_overview.md.tmp.74442.48f16a4ce53d",
     "curriculum/00_README.md",
-    "notes/Untitled.md",
-    "notes"
+    "notes/Untitled.md"
   ]
 }

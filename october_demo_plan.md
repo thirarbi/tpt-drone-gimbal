@@ -66,12 +66,13 @@
 
 ## 1. Demo scope
 
-| Tier | Demo item | Fallback if it slips |
-|------|-----------|----------------------|
-| **Must** | Gimbal holds camera attitude (nadir) while the base is tilted by hand — IMU + IK on the ESP32 | Single-axis bench rig doing the same |
-| **Must** | `landing_sw` closed-loop sim landing live + Bab 4.2 results table | Pre-recorded run + figures |
-| **Should** | Pi detects a hand-held ArUco pad → commands gimbal over UART → gimbal tracks / reports angles | Gimbal driven by a scripted angle sequence from the Pi |
-| **Could** | Sim landing with the real gimbal in the loop | Skip |
+| Tier       | Demo item                                                                                                                          | Fallback if it slips                                   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Must**   | Gimbal holds camera attitude (nadir) while the base is tilted by hand — IMU + IK on the ESP32                                      | Single-axis bench rig doing the same                   |
+| **Must**   | `landing_sw` closed-loop sim landing live + Bab 4.2 results table                                                                  | Pre-recorded run + figures                             |
+| **Should** | Pi detects a hand-held ArUco pad → commands gimbal over UART → gimbal tracks / reports angles                                      | Gimbal driven by a scripted angle sequence from the Pi |
+| **Could**  | Sim landing with the real gimbal in the loop                                                                                       | Skip                                                   |
+| **Over**   | The gimbal is NOT asked to lock-on to the ArUco board and follow it if it tilts! The gimbal is only asked to be pointed downwards. | -                                                      |
 
 **Cut order if behind** (cut from the top): gimbal-in-the-loop sim → `ctypes`
 gimbal sim (T7) → slip detection → active yaw (hold yaw open-loop at 0, demo
