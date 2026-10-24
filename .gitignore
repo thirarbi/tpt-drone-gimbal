@@ -1,3 +1,19 @@
 /.venv
 /.claude
 /landing_sw/__pycache__
+
+# ESP-IDF build output and generated config
+/gimbal_fw/build/
+/gimbal_fw/sdkconfig
+/gimbal_fw/sdkconfig.old
+/gimbal_fw/managed_components/
+
+# Host test binary (built by host_test/Makefile)
+/gimbal_fw/host_test/test_rot
+
+# Editor / app state
+/.vscode/
+/.obsidian/workspace.json
+
+# LibreOffice lock files
+.~lock.*#

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "notes.md",
+                "file": "companion_computer.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "notes"
+              "title": "companion_computer"
             }
           },
           {
@@ -27,12 +27,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "october_demo_plan.md",
-                "mode": "preview",
+                "file": "KINEMATICS-DERIVATION.md",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "october_demo_plan"
+              "title": "KINEMATICS-DERIVATION"
+            }
+          },
+          {
+            "id": "e6d5abb46a6d9501",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "companion_computer.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "companion_computer"
             }
           }
         ],
@@ -115,7 +129,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "curriculum/01_system_overview.md",
+                "file": "KINEMATICS-DERIVATION.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -206,30 +220,34 @@
   },
   "active": "4729e003d2980b75",
   "lastOpenFiles": [
-    "notes.md",
-    "companion_computer.md",
     "october_demo_plan.md",
-    "datasheets/xl320_motor.html",
+    "companion_computer.md",
+    "KINEMATICS-DERIVATION.md",
+    "gimbal_fw/host_test/test_rot",
+    "gimbal_fw/host_test/Makefile",
+    "gimbal_fw/host_test/test_rot.c",
+    "gimbal_fw/host_test",
+    "CLAUDE.md",
+    "gimbal_fw/host_test/Makefile.tmp.61190.4b6973bf832b",
+    "gimbal_fw/host_test/test_rot.c.tmp.61190.6ac7f27e487b",
+    "gimbal_fw/build/gimbal_fw.bin",
+    "gimbal_fw/build/gimbal_fw.elf",
+    "gimbal_fw/build/esp-idf/main/stCUcmD9",
+    "gimbal_fw/build/esp-idf/main/stAUbyYs",
+    "gimbal_fw/notes.md",
+    "notes.md",
+    "gimbal_fw/README.md",
     "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
     "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
     "datasheets/xl320_motor_files/icon_task10_Vmcy.webp",
     "datasheets/xl320_motor_files/cm-550_product_Vmcy.png",
     "datasheets/xl320_motor_files/p-series_Vmcy.webp",
     "datasheets/xl320_motor_files/rh-p12-rn_Vmcy.webp",
-    "datasheets/xl320_motor_files/katex.min_Vmcy.css",
     "datasheets/xl320_motor_files/Y-series_Vmcy.webp",
     "datasheets/xl320_motor_files/icon_r_manager_Vmcy.webp",
     "datasheets/xl320_motor_files/bioloid-premium_Vmcy.webp",
     "datasheets/xl320_motor_files/ai-sapiens_Vmcy.webp",
-    "datasheets/xl320_motor_files/styles.66930f39_Vmcy.css",
-    "datasheets/xl320_motor_files/main.0b4c2229_Vmcy.js",
-    "datasheets/xl320_motor_files/runtime~main.21f2cf15_Vmcy.js",
-    "datasheets/xl320_motor_files",
-    "october_demo_plan.md.tmp.105171.a1ea01988572",
     "curriculum/01_system_overview.md",
-    "landing_sw/results/flightlog.sqlite-journal",
-    "landing_sw/__pycache__/config.cpython-312.pyc.135129172261696",
-    "curriculum/01_system_overview.md.tmp.74442.48f16a4ce53d",
     "curriculum/00_README.md",
     "notes/Untitled.md"
   ]

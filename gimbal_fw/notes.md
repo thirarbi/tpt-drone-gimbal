@@ -1,0 +1,1 @@
+Why use .h? Its a C header. It doesn't contain logic and only acts as variable declarations.

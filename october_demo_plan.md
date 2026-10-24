@@ -505,7 +505,7 @@ Unplug motor power before rewiring, *every* time.
   the IK clamp and protect the cables.
 - **Done when:** README committed; Pasha and Aga have seen the pin map and axis order.
 
-### T2 · Fri 9 · Project skeleton + host test harness · 2 h
+### ✅ T2 · Fri 9 · Project skeleton + host test harness · 2 h
 
 - `idf.py create-project gimbal_fw`, create the component folders from §3.1 with
   empty `.c/.h` + `CMakeLists.txt` (`idf_component_register(SRCS ... INCLUDE_DIRS include REQUIRES ...)`),
