@@ -41,16 +41,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "companion_computer.md",
-                "mode": "source",
+                "file": "october_demo_plan.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "companion_computer"
+              "title": "october_demo_plan"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -129,7 +129,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "KINEMATICS-DERIVATION.md",
+                "file": "october_demo_plan.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -218,11 +218,22 @@
       "bases:Create new base": false
     }
   },
-  "active": "4729e003d2980b75",
+  "active": "e6d5abb46a6d9501",
   "lastOpenFiles": [
-    "october_demo_plan.md",
-    "companion_computer.md",
+    "gimbal_fw/tools/gen_golden.py",
+    "gimbal_fw/tools",
+    "GIMBAL-LOCK.md",
+    "Pasted image 20261025213654.png",
     "KINEMATICS-DERIVATION.md",
+    "Pasted image 20261025210505.png",
+    "october_demo_plan.md",
+    "landing_sw/tests/test_gimbal_kinematics.py",
+    "landing_sw/tests",
+    "landing_sw/gimbal_kinematics.py",
+    "inverse_kinematics.png",
+    "three-axis.png",
+    "Pasted image 20260916112044.png",
+    "companion_computer.md",
     "gimbal_fw/host_test/test_rot",
     "gimbal_fw/host_test/Makefile",
     "gimbal_fw/host_test/test_rot.c",
@@ -230,10 +241,6 @@
     "CLAUDE.md",
     "gimbal_fw/host_test/Makefile.tmp.61190.4b6973bf832b",
     "gimbal_fw/host_test/test_rot.c.tmp.61190.6ac7f27e487b",
-    "gimbal_fw/build/gimbal_fw.bin",
-    "gimbal_fw/build/gimbal_fw.elf",
-    "gimbal_fw/build/esp-idf/main/stCUcmD9",
-    "gimbal_fw/build/esp-idf/main/stAUbyYs",
     "gimbal_fw/notes.md",
     "notes.md",
     "gimbal_fw/README.md",
@@ -242,11 +249,6 @@
     "datasheets/xl320_motor_files/icon_task10_Vmcy.webp",
     "datasheets/xl320_motor_files/cm-550_product_Vmcy.png",
     "datasheets/xl320_motor_files/p-series_Vmcy.webp",
-    "datasheets/xl320_motor_files/rh-p12-rn_Vmcy.webp",
-    "datasheets/xl320_motor_files/Y-series_Vmcy.webp",
-    "datasheets/xl320_motor_files/icon_r_manager_Vmcy.webp",
-    "datasheets/xl320_motor_files/bioloid-premium_Vmcy.webp",
-    "datasheets/xl320_motor_files/ai-sapiens_Vmcy.webp",
     "curriculum/01_system_overview.md",
     "curriculum/00_README.md",
     "notes/Untitled.md"
