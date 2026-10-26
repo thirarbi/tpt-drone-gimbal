@@ -10,6 +10,7 @@ def test_round_trip():
         q = rng.uniform(gk.LIMITS[:, 0], gk.LIMITS[:, 1])
         q2, sing = gk.ik(gk.fk(q))
         assert not sing
+        assert np.allclose(wrap_pi(q2 - q), 0.0, atol=1e-9) # float64 here. 1e-4 for float32 in C.
 
 # Check reverse IK
 def test_fk_is_proper_rotation():
@@ -27,3 +28,10 @@ def test_nadir_not_singular():
 def test_clamp():
     q = gk.clamp_limits(np.radians([200, 50, -150]))
     assert np.allclose(np.degrees(q), [170, 40, -110])
+
+# Hand-derived anchor test.
+def test_fk_by_hand():
+    yaw, roll, pitch = 0.3, -0.2, -1.2
+    R = gk.fk([yaw, roll, pitch])
+    assert np.isclose(R[2,1], np.sin(roll))
+    assert np.isclose(R[2,0], -np.cos(roll) * np.sin(pitch))

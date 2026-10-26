@@ -48,6 +48,15 @@ int main(void) {
         n++;
     }
     fclose(f);
+
+    // Singularity flag so that it doesn't depend on the .csv
+    mat3_t Rs = rot_x(1.5f);
+    float qs[3];
+    if (gimbal_ik(&Rs, qs) != GIMBAL_IK_NEAR_SINGULAR) {
+        bad++;
+        printf("singularity not flagged\n");
+    }
+
     printf("test_kinematics: %d rows, %d failures\n", n, bad);
     return bad != 0;
 }

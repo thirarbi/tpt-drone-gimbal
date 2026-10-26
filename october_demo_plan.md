@@ -632,7 +632,7 @@ Unplug servo power before rewiring, *every* time.
   ±π, at limits, near singularity). Don't ask it to "write IK".
 - **Done when:** pytest green; CSV committed.
 
-### T3b · Sun 11 · Kinematics in C + host tests · 3 h
+### ✅ T3b · Sun 11 · Kinematics in C + host tests · 3 h
 
 - `rot.c`, `kinematics.c`; `host_test/test_kinematics.c` reads the CSV and checks
   FK and IK against Python (tolerance 1e-4 rad / 1e-5 on matrix entries).

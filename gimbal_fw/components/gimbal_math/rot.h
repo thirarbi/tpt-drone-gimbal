@@ -1,4 +1,3 @@
-// TEMPORARY so idf.py can build
 #pragma once
 
 typedef struct {

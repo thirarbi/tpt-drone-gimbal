@@ -13,7 +13,7 @@ def _rx(a):
 
 def _ry(a):
     c, s = np.cos(a), np.sin(a)
-    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
 
 def _rz(a):
     c, s = np.cos(a), np.sin(a)

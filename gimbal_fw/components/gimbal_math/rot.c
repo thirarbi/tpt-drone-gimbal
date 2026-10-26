@@ -8,6 +8,16 @@ mat3_t rot_x(float a) {
     return (mat3_t){{{1, 0, 0}, {0, c, -s}, {0, s, c}}};
 }
 
+mat3_t rot_y(float a) {
+    float c = cosf(a), s = sinf(a);
+    return (mat3_t){{{c, 0, s}, {0, 1, 0}, {-s, 0, c}}};
+}
+
+mat3_t rot_z(float a) {
+    float c = cosf(a), s = sinf(a);
+    return (mat3_t){{{c, -s, 0}, {s, c, 0}, {0, 0, 1}}};
+}
+
 mat3_t mat3_mul(const mat3_t *A, const mat3_t * B) {
     mat3_t C;
     for (int i = 0; i < 3; i++){
