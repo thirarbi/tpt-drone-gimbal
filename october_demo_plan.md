@@ -7,6 +7,13 @@
 > days usually overrun by ~30%, so the stretch items are your buffer. If a task goes
 > **50% over its estimate, stop and flag it** — don't grind silently, we re-plan.
 > Phase 0 (6–7 Oct) slipped, which is fine: it's folded into today and Friday.
+>
+> **Rev 2 (26 Oct): actuator change.** The gimbal is driven by three **Dynamixel
+> XL-320 smart servos** on a half-duplex TTL bus, not gimbal BLDCs + DRV8313. Aga's
+> working Arduino sketch (XL-320 chain + MPU-6050 console) is the hardware reference;
+> its constants are folded into §2.5, §2.6 and §4.3. Everything MCPWM / open-loop /
+> pole-pair related is gone. The maths (§4.1, §4.2) is unchanged, except that joint
+> angles are now *measured* instead of assumed.
 
 ---
 
@@ -17,10 +24,10 @@
   `demo-rc1` on Sun 25 and don't touch `main` after that except for bug fixes.
 - Every task ends with something you can **show**: a plot, a passing test, a
   motor moving. "I wrote the code" is not done.
-- Keep a running `gimbal_fw/NOTES.md`: measured values (resistances, pole pairs,
-  offsets, loop times), weird bugs and their causes. This becomes your report
+- Keep a running `gimbal_fw/NOTES.md`: measured values (servo IDs/baud, zero ticks,
+  bus timings, loop times), weird bugs and their causes. This becomes your report
   material and the poster numbers.
-- **Units in names**: `pitch_rad`, `rate_dps`, `t_us`, `u_volts`. Radians everywhere
+- **Units in names**: `pitch_rad`, `rate_dps`, `t_us`, `goal_tick`. Radians everywhere
   in C and on the wire; degrees only at the `landing_sw` interface and in plots.
 
 **Using your AI assistant (for learning, not just output)**
@@ -32,9 +39,13 @@
 - **Never trust AI-written register values or peripheral setup without the
   datasheet open.** Specific traps it *will* fall into here:
   - ESP-IDF has **two I²C APIs** (legacy `driver/i2c.h` vs new
-    `driver/i2c_master.h`) and **two MCPWM APIs** (legacy `mcpwm_init()` vs v5
-    `mcpwm_new_timer()`…). AI happily mixes them. We use **only the new ones**.
-    If you see `i2c_master_write_to_device()` or `mcpwm_init()`, reject it.
+    `driver/i2c_master.h`). AI happily mixes them. We use **only the new one**.
+    If you see `i2c_master_write_to_device()` or `i2c_param_config()`, reject it.
+  - **Dynamixel has two protocols and many control tables.** The XL-320 speaks
+    **Protocol 2.0 only**, with its *own* control table (Goal Position = addr 30,
+    2 bytes, 0–1023). The AX-12 (Protocol 1.0) and the X-series (XL330/XL430: Goal
+    Position = addr 116, 4 bytes) look similar and AI blends them. Every address
+    comes from the XL-320 e-manual page, nothing else.
   - Rotation order and sign conventions (ZXY vs ZYX, FRD vs FLU). Always verify
     numerically against the Python reference, never by reading.
   - MPU6050 clones: register map mostly identical, `WHO_AM_I` differs.
@@ -42,11 +53,12 @@
 
 **Datasheets to have open (download today)**
 - MPU-6000/MPU-6050 *Product Specification* **and** *Register Map and Descriptions*
-- TI DRV8313 datasheet (pin functions, EN/nSLEEP/nRESET/nFAULT, VM range, current limits)
-- ESP32 Technical Reference Manual: MCPWM chapter
-- ESP-IDF Programming Guide (match your installed version): MCPWM, I2C master,
-  UART, GPIO (ISR), NVS, FreeRTOS (task notifications)
-- Your gimbal motor's spec sheet (pole pairs, phase resistance, rated current)
+- ROBOTIS e-manual: the **XL-320** page (specs + control table) and the **DYNAMIXEL
+  Protocol 2.0** page (packet format, CRC, byte stuffing, instructions, error byte)
+- 74HC126 datasheet (quad tri-state buffer; output enable is active-**high**)
+- ESP-IDF Programming Guide (match your installed version, v6.1): I2C master,
+  UART (incl. **RS485 half-duplex mode**), GPIO (ISR), NVS, FreeRTOS (task
+  notifications, queues)
 
 **Arduino → ESP-IDF cheat sheet (you'll want this the first week)**
 
@@ -55,7 +67,8 @@
 | `setup()` / `loop()` | `app_main()` creates tasks and **returns**; each task is its own `for(;;)` |
 | `delay(ms)` | `vTaskDelay(pdMS_TO_TICKS(ms))` (set tick rate to 1000 Hz, see §4.7) |
 | `millis()` / `micros()` | `esp_timer_get_time()` → `int64_t` µs |
-| `analogWrite()` | MCPWM (our motors) or LEDC |
+| `Serial2.begin()` / `.write()` / `.read()` | `driver/uart.h`: `uart_driver_install`, `uart_write_bytes`, `uart_read_bytes` |
+| `digitalWrite(DIR)` around a UART write | `uart_set_mode(..., UART_MODE_RS485_HALF_DUPLEX)`: the UART hardware drives DIR (as RTS) for you |
 | `Wire` | `driver/i2c_master.h` |
 | `Serial.print` | `ESP_LOGI(TAG, ...)` / `printf` |
 | `attachInterrupt()` | `gpio_install_isr_service()` + `gpio_isr_handler_add()` |
@@ -75,8 +88,9 @@
 | **Over**   | The gimbal is NOT asked to lock-on to the ArUco board and follow it if it tilts! The gimbal is only asked to be pointed downwards. | -                                                      |
 
 **Cut order if behind** (cut from the top): gimbal-in-the-loop sim → `ctypes`
-gimbal sim (T7) → slip detection → active yaw (hold yaw open-loop at 0, demo
-roll+pitch only) → protocol speed-ups.
+gimbal sim (T7) → servo fault auto-recovery (reboot on overload) → active yaw
+(hold yaw at 0, demo roll+pitch only) → servo position readback (run `stab_step`
+on `q_cmd` only) → protocol speed-ups.
 
 Explicitly **after** the demo: ArduPilot SITL integration (Aga, Nov), real MAVLink
 flight hardware, flight tests, MAE/landing-radius analysis (Dec–Jan).
@@ -93,8 +107,15 @@ Pi 5 — landing_sw (Python)                    ESP32 — gimbal_fw (C, ESP-IDF)
 camera.py (picamera2, OV9281)                 MPU6050 INT (1 kHz data-ready) ─► GPIO ISR
   → markers.py → frames.py → ekf.py                                               │ notify
   → fsm.py → landing.py / pointing.py         core 1: ctrl_task (1 kHz)  ◄────────┘
-                    │                            imu read → mahony → stab_step() → foc ×3
-gimbal_iface.ESP32Gimbal                      core 0: comms_task (UART2 parser, telemetry 50 Hz,
+                    │                            imu read → mahony; every 10th tick:
+                    │                            stab_step() → q_cmd mailbox ──┐
+                    │                         core 0: servo_task (100 Hz) ◄────┘
+                    │                            SYNC_WRITE goals, READ present pos ×3
+                    │                            → q_meas mailbox (back to ctrl_task)
+                    │                              │ UART2, half-duplex via 74HC126
+                    │                              ▼
+                    │                            XL-320 ×3 (yaw, roll, pitch) @ 7.4 V
+gimbal_iface.ESP32Gimbal                      core 0: comms_task (UART1 parser, telemetry 50 Hz,
   SET_TARGET (20–50 Hz) ──── UART 3.3 V ───►          watchdog), log_task (USB console)
   ◄──────────────────────── TELEM (50 Hz)
 ```
@@ -109,13 +130,14 @@ without telling the team.
     Nadir = pitch −π/2, roll 0.
   - `yaw_rel_rad`: **relative to the drone body** (we have no magnetometer, so
     there is no world yaw).
-  - `mode`: `PARK` (motors off), `HOLD` (stabilise to target), `NADIR` (shortcut).
+  - `mode`: `PARK` (servo torque off), `HOLD` (stabilise to target), `NADIR` (shortcut).
 - **ESP32 → Pi `TELEM`** = *where the camera actually is relative to the body*:
-  - `q_rad[3]` = **joint angles** (yaw, roll, pitch), body-relative. This is what
+  - `q_rad[3]` = **joint angles** (yaw, roll, pitch), body-relative, **measured**
+    from the servos' position sensors (not the commanded value). This is what
     `frames.camera_to_body_rotation()` needs, because the marker must be
     transformed with the *live* camera→body rotation.
-  - plus camera attitude from the IMU, status/fault flags, loop-time max, echo of
-    last command `seq`.
+  - plus camera attitude from the IMU, status/fault flags (incl. per-servo
+    hardware-error bits), loop-time max, echo of last command `seq`.
 - `ESP32Gimbal.get_angles()` returns joint angles in the **existing**
   `landing_sw` convention: `(pitch, roll, yaw)` in degrees, pitch 0 = bore forward,
   −90 = bore down. `set_angles()` keeps its signature, so `fsm.py` doesn't change.
@@ -131,52 +153,59 @@ without telling the team.
   `config.GIMBAL_PITCH_LAND_DEG`).
 - Singularity of this chain is at **roll = ±90°**, far from where a gimbal operates.
   That's why this order is good. Nadir (pitch −90°) is *not* singular here.
+- The XL-320 only turns **300°** (ticks 0–1023, then a 60° dead zone). Have Pasha
+  mount every horn so joint zero ≈ tick 512 (servo centre). That caps each joint at
+  ±150° minus margin, so yaw ±170° is no longer possible.
 
 ### 2.4 Timing budget
 
 | Item | Rate | Note |
 |---|---|---|
 | MPU6050 sample (data-ready IRQ) | 1 kHz | Sensor clocks the loop, so no aliasing and no duplicate samples |
-| Control loop (`ctrl_task`) | 1 kHz | Budget ≤ 400 µs compute; the 14-byte I²C read alone is a few hundred µs at 400 kHz, so measure it |
-| PWM carrier | 25 kHz | Above audible; center-aligned |
+| Attitude loop (`ctrl_task`) | 1 kHz | IMU read + Mahony. Budget ≤ 400 µs; the 14-byte I²C read alone is a few hundred µs at 400 kHz, so measure it |
+| `stab_step` + servo bus (`servo_task`) | 100 Hz | The XL-320 runs its own position loop, so commanding it faster buys nothing. Per cycle: 1 Sync Write + 3 Reads |
+| Servo bus baud | 1 Mbit/s (target) | Aga's servos are at 115200: one cycle there ≈ 2 ms write + 3 × ≈ 2.8 ms reads ≈ 10.5 ms, which **doesn't fit 100 Hz**. At 1 M with Return Delay 0 it's ≈ 1.2 ms. See §4.3 |
 | Telemetry ESP32 → Pi | 50 Hz | ~40 B/frame → 2 kB/s, fine at 115200 |
 | Commands Pi → ESP32 | 20–50 Hz | Watchdog: 200 ms without a valid frame → `NADIR` hold |
 | Dev logging over USB | 200 Hz–1 kHz | Binary at 921600 baud on UART0 |
 
-### 2.5 Pin map (draft: confirm with Aga, assumes ESP32-WROOM-32 DevKit)
+### 2.5 Pin map (servo + IMU pins from Aga's working sketch; Pi UART pins are a proposal, confirm with Aga)
 
 | Function | GPIO | Note |
 |---|---|---|
-| Pitch motor IN1/IN2/IN3 | 25, 26, 27 | MCPWM unit 0 |
-| Roll motor IN1/IN2/IN3 | 32, 33, 4 | MCPWM unit 0 |
-| Yaw motor IN1/IN2/IN3 | 18, 19, 23 | MCPWM unit 1 |
-| DRV8313 EN (shared) | 13 | + external 10 k pull-**down** → motors off during boot/reset |
-| DRV8313 nFAULT (wired-OR) | 34 | input-only pin, open-drain fault → external 10 k pull-**up** to 3V3 |
-| MPU6050 SDA / SCL | 21 / 22 | short wires (< 20 cm) at 400 kHz |
-| MPU6050 INT | 35 | input-only, INT is push-pull active-high by default |
-| UART2 RX / TX ↔ Pi | 16 / 17 | Pi GPIO14 TX → ESP 16, Pi GPIO15 RX ← ESP 17, **common GND** |
+| Servo bus TX (UART2) | 17 | → 74HC126 pin 2 (1A) |
+| Servo bus RX (UART2) | 16 | ← DATA line directly, so you receive your own echo (§4.3) |
+| Servo bus DIR | 4 | → 74HC126 pin 1 (1OE), high = ESP32 drives the line. Used as UART2 **RTS** in RS485 half-duplex mode. Add a 10 k pull-**down** so the buffer is off during boot/reset |
+| Servo DATA line | n/a | 74HC126 pin 3 (1Y) → DATA, 10 k pull-up DATA → 3V3, daisy-chained to the 3 servos |
+| MPU6050 SDA / SCL | 21 / 22 | AD0 → GND (addr 0x68). Pull-ups to **3.3 V only**. Aga's sketch runs 100 kHz; we need 400 kHz (§2.4), so keep wires short (< 20 cm) |
+| MPU6050 INT | 35 | input-only, push-pull active-high by default. **Not wired in Aga's sketch** (it polls), so add this wire |
+| UART1 RX / TX ↔ Pi | 26 / 25 | Moved: UART2 now belongs to the servos. UART1's default pins are flash pins, so it **must** be remapped with `uart_set_pin`. Pi GPIO14 TX → ESP 26, Pi GPIO15 RX ← ESP 25, **common GND** |
 | Status LED | 2 | onboard on most DevKits |
+
+Freed by the actuator change: 13, 18, 19, 23, 27, 32, 33, 34.
+
+Why the servo bus needs the 74HC126 at all: the XL-320 has **one** data wire for
+both directions. The ESP32 TX pin always drives (idle = high), so it would fight
+the servo's reply. The buffer disconnects TX from the line (high-Z) whenever DIR is
+low; RX listens to the line all the time.
 
 **Never use:** GPIO 6–11 (flash). **Avoid for outputs:** 0, 2, 5, 12, 15
 (strapping; **GPIO 12 high at boot breaks the boot**), 1/3 (USB console).
 34–39 are input-only with no internal pull-ups. **If the module is a WROVER**,
-GPIO 16/17 are taken by PSRAM, so move UART2. `esptool chip_id` today tells you
-what you have.
-
-MCPWM allocation: unit 0 has 3 operators × 2 generators = 6 outputs → pitch
-(op0 A, op0 B, op1 A) + roll (op1 B, op2 A, op2 B). All three operators on unit
-0's timer 0 → all 6 phases synchronous. Yaw on unit 1. 9 of 12 outputs used.
+GPIO 16/17 are taken by PSRAM, so move the servo bus. `esptool chip_id` today tells
+you what you have.
 
 ### 2.6 Power
 
-- DRV8313 VM from the 3S pack (11.1–12.6 V; DRV8313 needs ≥ 8 V). ESP32 from a 5 V
-  buck into the DevKit 5V pin. **One common ground** for LiPo−, DRV GND, ESP32 GND,
-  Pi GND.
-- 100–470 µF electrolytic across VM at each DRV board. The open-loop drive
-  draws constant current even when holding still.
-- **Do not** power anything from the DRV8313's V3P3OUT pin (≈10 mA max).
-- Bench work: lab PSU at 12 V, **current limit 0.5–1 A**, never straight from the LiPo
-  until T10 is done.
+- **Servos on their own 7.4 V supply** (XL-320 range is 6–8.4 V: a 2S pack, or a
+  ≥ 3 A buck from the 3S pack set to 7.4 V). **A 3S pack (11.1–12.6 V) straight on
+  the servo bus kills them.** ESP32 from a 5 V buck into the DevKit 5V pin. **One
+  common ground** for LiPo−, servo supply, ESP32 GND, Pi GND.
+- A few hundred µF electrolytic across the servo supply near the first servo: three
+  servos accelerating together pull current spikes that otherwise brown out the bus.
+- Size the supply for 3 × the XL-320 stall current (e-manual) plus margin: a servo
+  pushing against a limit or an unbalanced camera *is* a stall.
+- Bench work: lab PSU at 7.4 V, **current limit ~1–1.5 A** while bringing servos up.
 
 ---
 
@@ -189,9 +218,10 @@ gimbal_fw/
 ├── CMakeLists.txt, sdkconfig.defaults, README.md, NOTES.md
 ├── main/
 │   ├── app_main.c        boot sequence (§4.6), creates tasks
-│   ├── board.h           pin map + motor-to-MCPWM mapping (ONLY place pins live)
-│   ├── ctrl_task.c       1 kHz loop: imu → mahony → stab_step → foc
-│   ├── comms_task.c      UART2 to Pi: parse SET_TARGET, send TELEM, watchdog
+│   ├── board.h           pin map (ONLY place pins live); servo IDs live in calib_t
+│   ├── ctrl_task.c       1 kHz: imu → mahony; 100 Hz: stab_step → q_cmd mailbox
+│   ├── servo_task.c      100 Hz, sole owner of the servo bus: q_cmd → Sync Write, read q_meas
+│   ├── comms_task.c      UART1 to Pi: parse SET_TARGET, send TELEM, watchdog
 │   └── log_task.c        ring buffer → binary dump on USB console (dev only)
 ├── components/
 │   ├── gimbal_math/      PURE C, NO ESP-IDF HEADERS (compiles on laptop)
@@ -201,7 +231,8 @@ gimbal_fw/
 │   │   ├── pid.c/.h          PID with anti-windup + output clamp (fallback mode)
 │   │   └── stab.c/.h         stab_step(): the WHOLE per-tick control law
 │   ├── mpu6050/          init, burst read 14 B, scale to SI, gyro bias cal
-│   ├── foc/              MCPWM setup, open-loop sine drive, enable/fault
+│   ├── xl320/            dxl_packet.c/.h: PURE C (crc16_dxl, packet build, status parser),
+│   │                     host-tested · xl320.c/.h: UART2 half-duplex, ping/read/write/sync write
 │   ├── proto/            frame encode/parse state machine, crc16
 │   └── calib/            calib_t load/save in NVS
 ├── host_test/            Makefile + test_*.c, links gimbal_math only
@@ -219,17 +250,23 @@ Key APIs (signatures only, you write the bodies):
   `void mahony_update(mahony_t*, const float gyro_rads[3], const float acc_g[3], float dt);`
   `void mahony_get_R(const mahony_t*, mat3_t *R_world_cam);`
 - `stab.h`: `void stab_step(stab_t*, const stab_in_t *in, stab_out_t *out);`
-  `stab_in_t` = camera attitude, current `q_cmd`, target, dt; `stab_out_t` = new
+  `stab_in_t` = camera attitude, current `q_cmd`, measured `q_meas` (+ valid flag), target, dt; `stab_out_t` = new
   `q_cmd`, flags. **Keeping the control law a pure function** is what lets you
   unit-test it on the laptop and call the *exact same code* from the Python sim.
 - `mpu6050.h`: `mpu6050_init()`, `mpu6050_read(mpu6050_sample_t*)`,
   `mpu6050_calibrate_gyro(n_samples)`
-- `foc.h`: `foc_init(const foc_motor_cfg_t*)`, `foc_enable(bool)`,
-  `foc_set_angle(int motor, float mech_rad, float u_volts)`, `foc_fault_active()`
+- `dxl_packet.h` (pure C): `uint16_t crc16_dxl(const uint8_t*, size_t)`,
+  `size_t dxl_build(uint8_t id, uint8_t inst, const uint8_t *params, uint16_t n, uint8_t *out)`,
+  `int dxl_parser_feed(dxl_parser_t*, uint8_t byte)` → 1 when a valid **status** packet is complete
+- `xl320.h`: `xl320_init(uart_port_t, int baud)`, `xl320_ping(uint8_t id)`,
+  `xl320_read_u16(uint8_t id, uint16_t addr, uint16_t *v)`, `xl320_write_u8(...)`,
+  `xl320_sync_write_goal(const uint8_t ids[], const uint16_t ticks[], int n)`,
+  `xl320_torque(uint8_t id, bool on)`, `xl320_reboot(uint8_t id)`. Return 0, a
+  negative `XL320_ERR_*` (timeout, CRC, bad packet), or the servo's error byte.
 - `proto.h`: `proto_parser_feed(proto_parser_t*, uint8_t byte)` → callback per valid
   frame; `size_t proto_encode(uint8_t type, const void *payload, uint8_t len, uint8_t *out)`;
   `uint16_t crc16_ccitt(const uint8_t*, size_t)`
-- `calib.h`: `calib_t { pole_pairs[3], dir[3], zero_offset_rad[3], gyro_bias[3], R_imu_cam }`,
+- `calib.h`: `calib_t { servo_id[3], dir[3], zero_tick[3], gyro_bias[3], R_imu_cam }`,
   `calib_load()`, `calib_save()`
 
 ### 3.2 Pi side: `landing_sw/`
@@ -275,49 +312,107 @@ The IMU measures the camera's attitude in the world, `R_wc`. We know the joint a
 we commanded, `q_cmd`. So we can *infer the drone body attitude* and solve for the
 joints that put the camera where we want it:
 
-1. `R_wb = R_wc · FK(q_cmd)ᵀ`: base attitude estimate (no extra sensor needed)
+1. `R_wb = R_wc · FK(q_meas)ᵀ`: base attitude estimate (no extra sensor needed).
+   Use the **measured** joint angles from the servos; fall back to `q_cmd` if the
+   readback is stale (> 30 ms) or was cut.
 2. Build target `R_wc*` **using the base's own heading**: `R_wc* = Rz(yaw(R_wb) + yaw_rel) · Ry(pitch_t) · Rx(roll_t)`.
    The MPU6050's yaw drifts, but it drifts *identically* in `R_wc` and `R_wb`, so
    it **cancels**. This is the trick that makes a no-magnetometer IMU usable.
 3. `q_ik = IK(R_wbᵀ · R_wc*)`
 4. `q_cmd += clamp(K · wrap_pi(q_ik − q_cmd), ±ω_max·dt)`, then clamp to joint limits.
 
-Why `K < 1` (low-pass) and not just `q_cmd = q_ik`: the rotor *lags* the commanded
-field, so for a few ms `R_wc` doesn't yet reflect `q_cmd`. Step 1 is then briefly
-wrong, and a deadbeat update oscillates. Tune `K`: start at a ~5 Hz equivalent,
-raise until it rings, then back off by half.
+Why `K < 1` (low-pass) and not just `q_cmd = q_ik`: the servo *lags* its goal (its
+own position loop + gear train), and `q_meas` is up to one servo cycle (10 ms) old
+while `R_wc` is fresh. Step 1 is then briefly inconsistent, and a deadbeat update
+oscillates. Tune `K`: start at a ~5 Hz equivalent, raise until it rings, then back
+off by half. `K` is applied per **100 Hz** tick now.
 
 The **fallback mode** (`STAB_MODE_PID`), worth 1 h to implement: for small angles
 each joint mostly corrects its own camera axis, so a plain per-axis PID on camera
 roll/pitch error (classic hobby-gimbal style) also works. Implement it so you have
 something that stabilises even if the IK loop fights you on the day.
 
-### 4.3 Open-loop "FOC": think microstepping a stepper
+### 4.3 XL-320 smart servos: what the servo does for you, and the bus
 
-You've driven motors before; this is the new concept. A gimbal BLDC driven open-loop
-behaves like a **stepper motor with very fine microstepping**: you rotate the
-magnetic field and the rotor follows. With *p* pole pairs, one electrical revolution
-= 360°/p mechanical (e.g. 7 pole pairs → 51.4°).
+You no longer generate the motor drive. Each XL-320 has its own MCU, a potentiometer
+and a position PID: you send a *goal* in ticks, it drives there and holds.
+Consequences:
+
+- **Absolute position**: Present Position is readable any time → no snap on
+  enable, no slip, no hunting for a yaw home mark at boot. You still need a one-time
+  `zero_tick` per joint (T16).
+- **Resolution 300°/1023 ≈ 0.29°/tick**, plus plastic-gear backlash. That is a floor
+  on pointing accuracy; measure both in T12 and quote them honestly.
+- **Torque is limited** (stall torque per e-manual, < 0.4 N·m at 7.4 V): balance
+  still matters, now because of **overload shutdown** instead of slip.
+
+Ticks ↔ joint radians (the *only* place this conversion lives):
 
 ```c
-// u = phase voltage amplitude (V), vbus = supply (V), duties in [0,1]
-float th_e = calib.dir[m] * calib.pole_pairs[m] * mech_rad + calib.zero_offset_rad[m];
-d[0] = 0.5f + u * sinf(th_e)               / vbus;
-d[1] = 0.5f + u * sinf(th_e - 2.0943951f)  / vbus;   // -2π/3
-d[2] = 0.5f + u * sinf(th_e + 2.0943951f)  / vbus;   // +2π/3
-// comparator ticks = d[i] * peak_ticks
+#define XL320_RAD_PER_TICK  (300.0f / 1023.0f * 0.017453293f)   // ≈ 0.0051183 rad
+q_rad = (float)c->dir[j] * (float)((int)tick - (int)c->zero_tick[j]) * XL320_RAD_PER_TICK;
+// inverse: tick = zero_tick + dir * q_rad / XL320_RAD_PER_TICK, rounded, clamped to 0..1023
 ```
 
-- **Voltage limit `u`** sets torque *and* heat. Phase current ≈ `u / R_phase`, where
-  `R_phase` ≈ half the phase-to-phase resistance you measure today. Start at
-  `u = 1 V`; aim for < ~0.5 A unless the motor spec says more. Touch-test the motor
-  after 5 min holding.
-- **Slip**: if the load torque exceeds what `u` gives, the rotor skips to the next
-  electrical position, and your joint-angle belief is now off by 360°/p. Causes:
-  imbalance, too-fast `ω_max`, too-low `u`. Mitigations: Pasha balances the
-  camera, you rate-limit `q_cmd`, and (stretch) detect it via IMU-vs-FK mismatch.
-- **No absolute position at boot**: the rotor snaps to the nearest electrical
-  position on enable. See §4.6.
+**Control table** (XL-320, decimal addresses, as used in Aga's sketch; verify every
+row in the e-manual):
+
+| Addr | Size | Name | Area | Use |
+|---|---|---|---|---|
+| 3 | 1 | ID | EEPROM | 1, 2, 3 on Aga's bus |
+| 4 | 1 | Baud Rate | EEPROM | 115200 now → 1 M (§2.4) |
+| 5 | 1 | Return Delay Time | EEPROM | × 2 µs, default 250 (= 500 µs) → set 0 |
+| 6 / 8 | 2 | CW / CCW Angle Limit | EEPROM | = joint limits in ticks: servo-side safety net |
+| 11 | 1 | Control Mode | EEPROM | 2 = joint (1 = wheel) |
+| 17 | 1 | Status Return Level | EEPROM | default replies to everything; 1 = reply to PING/READ only |
+| 24 | 1 | Torque Enable | RAM | EEPROM writes are only accepted with torque **off** |
+| 25 | 1 | LED | RAM | bits R=1 G=2 B=4: free status light per joint |
+| 27–29 | 1 each | D / I / P gain | RAM | servo stiffness; tune P in T12 |
+| 30 | 2 | Goal Position | RAM | 0–1023 = 0–300° |
+| 32 | 2 | Moving Speed | RAM | 0 = max (unregulated); Aga used 300 |
+| 35 | 2 | Torque Limit | RAM | low during first bring-up |
+| 37 | 2 | Present Position | RAM | → `q_meas` |
+| 41 | 2 | Present Load | RAM | bits 0–9 magnitude, bit 10 direction |
+| 45 | 1 | Present Voltage | RAM | × 0.1 V: check 6–8.4 V at boot |
+| 46 | 1 | Present Temperature | RAM | °C |
+| 50 | 1 | Hardware Error Status | RAM | overload / overheat / input voltage |
+
+**Packet (Protocol 2.0)**
+
+```
+[FF FF FD 00][ID][LEN_L LEN_H][INST][PARAMS...][CRC_L CRC_H]
+LEN = n_params + 3            (instruction + params + 2 CRC bytes)
+CRC = CRC-16, poly 0x8005, init 0x0000, not reflected (a.k.a. CRC-16/BUYPASS),
+      over everything from the first FF to the last param
+Status reply: INST = 0x55, then 1 ERROR byte, then the data
+Instructions: PING 0x01, READ 0x02, WRITE 0x03, REBOOT 0x08, SYNC_WRITE 0x83; broadcast ID 0xFE (never replies)
+```
+
+- This is a **different CRC** from the Pi protocol's CCITT one (§4.5). Name them
+  `crc16_dxl` and `crc16_ccitt`, never plain `crc16`. Host-test `crc16_dxl` against
+  the e-manual's PING example (`FF FF FD 00 01 03 00 01` → CRC bytes `19 4E`) and the
+  standard check value (`"123456789"` → `0xFEE8`).
+- **Byte stuffing**: Protocol 2.0 inserts an extra `FD` whenever `FF FF FD` appears
+  inside the params. With goals ≤ 1023 (high byte ≤ `0x03`) and IDs 1–3 that can't
+  happen, so Aga skipped it and so can we, **as long as you `assert(tick <= 1023)`**
+  before building a packet. Write that invariant in a comment next to `dxl_build`.
+- **One Sync Write per servo cycle** moves all three servos at the same instant and
+  gets no reply. Reads are one round trip per servo.
+- **Echo**: RX sits on the same wire as TX, so you receive every packet you send.
+  Aga's `readStatus()` already handles this the right way: parse everything, **drop
+  packets whose instruction isn't `0x55` or whose ID is wrong**. Make
+  `dxl_parser_feed()` a byte-wise state machine like `proto.c`; then you can
+  host-test it with a recorded "echo + reply" byte stream.
+- **DIR in ESP-IDF**: don't port `digitalWrite(DIR); write; flush; digitalWrite(DIR)`.
+  Put UART2 in `UART_MODE_RS485_HALF_DUPLEX` with GPIO4 as its **RTS** pin; the UART
+  hardware asserts RTS while bytes are on the wire and releases it right after the
+  stop bit. That matters at 1 M with Return Delay 0, where the reply starts within
+  µs. **Check the polarity on the scope** (RTS high during TX = 74HC126 OE high)
+  before connecting servos. API reference: ESP-IDF's `uart/uart_echo_rs485` example.
+- **Faults**: if bit 7 (Alert) of a status packet's error byte is set, read Hardware
+  Error Status (50). Overload/overheat switches torque off by itself; recover with
+  REBOOT → torque on → flag it in TELEM. A servo that silently went limp is the new
+  "slip".
 
 ### 4.4 Loop timing: sensor-driven, ISR does nothing but notify
 
@@ -332,7 +427,7 @@ static void ctrl_task(void *arg) {
     for (;;) {
         if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5)) == 0) { /* IMU dead → safe stop */ }
         int64_t t0 = esp_timer_get_time();
-        /* imu read → mahony → stab_step → foc_set_angle ×3 */
+        /* imu read → mahony; every 10th tick: stab_step → xQueueOverwrite(q_cmd) */
         /* record esp_timer_get_time() - t0 into loop stats */
     }
 }
@@ -346,6 +441,11 @@ static void ctrl_task(void *arg) {
   `1.0f` literals; compile with `-Wdouble-promotion` to catch slips.
 - Don't call `ESP_LOGx`/`printf` inside `ctrl_task`: it blocks on the UART. Push
   to the log ring buffer instead.
+- **No servo bus I/O in `ctrl_task` either.** A servo READ blocks until the reply
+  (~0.3 ms at 1 M, ~3 ms at 115200). `servo_task` owns UART2 alone (so no mutex),
+  takes `q_cmd` from a 1-slot queue (`xQueueOverwrite` / `xQueuePeek`), and
+  publishes `q_meas` + timestamp + per-servo status the same way. Aga's sketch notes
+  the IMU "may skip samples" while servos talk: this split is what prevents that.
 
 ### 4.5 Protocol frame
 
@@ -365,18 +465,21 @@ definition change = change both sides + bump a `PROTO_VERSION` byte in TELEM.**
 
 ### 4.6 Boot sequence (`app_main`)
 
-1. EN low (motors off). Init NVS, load `calib_t` (if missing → refuse `HOLD`, allow
-   calibration only).
+1. DIR low (pull-down) → servo bus released. Init NVS, load `calib_t` (if missing →
+   refuse `HOLD`, allow calibration only).
 2. Init MPU6050; **gyro bias calibration: 2 s, gimbal must be still**; reject if
-   gyro variance too high ("someone's touching it") and retry.
+   gyro variance too high ("someone's touching it") and retry. (Servo torque is
+   still off, so the camera hangs freely: that's fine, it just has to be still.)
 3. Mahony converges for ~1 s (high `kp` during start-up, then normal).
-4. **Initial joint estimate**: assume the drone is level at power-on (it's on the
-   ground). Then the camera tilt from the IMU ≈ joint roll/pitch. Yaw: **require a
-   home mark** (the yaw joint is centred at power-on; ask Pasha for a physical
-   alignment mark).
-5. Set `θ_e` to that estimate, then **ramp `u` from 0 to its target over ~0.5 s**
-   → rotor eases in instead of snapping.
-6. Start `ctrl_task`, `comms_task`. Mode = `NADIR` until the Pi says otherwise.
+4. **Servo bring-up**: PING all 3 IDs (missing → fault, refuse `HOLD`). Check
+   Present Voltage is 6–8.4 V. Read Hardware Error Status; REBOOT any servo with an
+   error. Read Present Position → `q_meas`. **No home mark needed**: the servos know
+   where they are.
+5. Goal = present position, Moving Speed low (e.g. 50), torque on → nothing moves.
+   Then goal = NADIR; the servos walk there slowly. Once reached (or after 2 s), set
+   the operating Moving Speed.
+6. Start `ctrl_task`, `servo_task`, `comms_task`. Mode = `NADIR` until the Pi says
+   otherwise.
 
 ### 4.7 Config defaults
 
@@ -407,9 +510,9 @@ Total ≈ 75 h over 20 days.
 | Mon 12 | T4 MPU6050 driver + 1 kHz loop + logger | 4 h |
 | Tue 13 | T5 Attitude filter | 4 h |
 | Wed 14 | T6 Progress report · T7 ctypes sim (stretch) | 2 h + 3 h |
-| Thu 15 | T8 Open-loop drive, one motor (lab) | 5 h |
+| Thu 15 | T8 XL-320 bus driver, one servo (lab) | 5 h |
 | Fri 16 | T9 Control task + boot sequence | 4 h |
-| Sat 17 | T10 3 motors + NVS calib + on-target tests | 4 h |
+| Sat 17 | T10 3 servos + NVS calib + on-target tests | 4 h |
 | Sun 18 | T11 Single-axis stabilisation | 4 h |
 | Mon 19 | T12 Tuning + characterisation | 4 h |
 | Tue 20 | T13 Protocol, both sides | 5 h |
@@ -447,13 +550,11 @@ or `ch341` → `/dev/ttyUSB0`. `pip install esptool` (in the venv), then
 S3!), module (WROOM/WROVER), flash size. Won't connect → hold BOOT, tap EN.
 Nothing in dmesg → charge-only cable.
 
-**T0.3 Inventory + multimeter (20 min)**: photograph every board both sides. Write
-in `NOTES.md`: DRV8313 board model and which pins it breaks out (separate EN1-3 or
-one EN? nSLEEP/nRESET pulled up on-board?), MPU board model, motor model. **Measure
-phase-to-phase resistance of each motor (AB, BC, CA)**: all three should match
-within ~5%; a mismatch means a damaged winding. **Pole pairs**: count rotor magnets
-÷ 2, or with a scope on two phase wires spin the motor by hand once and count
-electrical cycles.
+**T0.3 Inventory (20 min)**: photograph every board both sides. Write in
+`NOTES.md`: MPU board model (on-board pull-ups? which value?), the 74HC126 wiring
+as built, the servo supply. Flash **Aga's sketch** (Arduino) and run `find`: record
+each servo's **ID and baud** (currently 115200), then `read` each one (position,
+voltage, temperature). Label every servo with its ID and the joint it goes on.
 
 **T0.4 Hello world flash (15 min, once IDF is ready)**: copy
 `$IDF_PATH/examples/get-started/hello_world`, `idf.py set-target esp32`,
@@ -480,29 +581,34 @@ relative to the camera**; you need this mounting matrix later.
   jumper pin 8 (GPIO14) ↔ pin 10 (GPIO15), run
   `python3 -m serial.tools.miniterm /dev/ttyAMA0 115200`, and typed chars echo back.
 - Then ESP32: flash `examples/peripherals/uart/uart_echo`, in `idf.py menuconfig`
-  set UART port 2, RX 16, TX 17, 115200. Wire Pi TX→ESP 16, Pi RX←ESP 17, **GND↔GND**.
+  set UART port 1, RX 26, TX 25, 115200 (UART2 is the servo bus now, §2.5). Wire Pi
+  TX→ESP 26, Pi RX←ESP 25, **GND↔GND**.
   Typing in miniterm on the Pi echoes back.
 - Both sides are 3.3 V logic, so direct wiring is fine. **Never** connect a 5 V
   USB-serial adapter's TX to either.
 
-**T0.7 (only with a current-limited bench PSU) DRV8313 power-on, no motor (20 min)**:
-12 V, limit 0.3 A. Measure: idle current (should be mA), on-board 3.3 V reg,
-nFAULT high (no fault), nSLEEP/nRESET high. Don't spin anything today.
+**T0.7 (only with a current-limited bench PSU) Servo bus scope trace (20 min)**:
+7.4 V, limit 1 A. With Aga's sketch, scope DATA and DIR together during `ping`:
+DIR must be high exactly while the ESP32's bytes are on the line and low before the
+servo's reply starts. Note the gap (= Return Delay Time). Save the screenshot: it's
+your reference when the ESP-IDF version misbehaves.
 
-**Done when:** `NOTES.md` has chip ID, IMU WHO_AM_I + axis mapping, motor
-resistances + pole pairs, UART echo working Pi↔ESP32.
+**Done when:** `NOTES.md` has chip ID, IMU WHO_AM_I + axis mapping, servo IDs + baud,
+the DIR/DATA scope trace, UART echo working Pi↔ESP32.
 **Watch out:** don't put the IMU on 5 V I²C lines; keep everything 3.3 V logic.
-Unplug motor power before rewiring, *every* time.
+Unplug servo power before rewiring, *every* time.
 
 ---
 
 ### T1 · Fri 9 · Design freeze + interface contract · 2 h
 
 - Put §2 of this doc into `gimbal_fw/README.md` (you can trim it). Get **axis order,
-  motor model, joint mechanical limits, and a yaw home mark** from Pasha; **pin
-  map and power** from Aga. Update §2.5 to the real pins.
-- Decide joint limits now (e.g. pitch −110°…+20°, roll ±40°, yaw ±170°) because they go in
-  the IK clamp and protect the cables.
+  servo-ID-to-joint mapping, horn orientation (which tick = joint zero), and joint
+  mechanical limits** from Pasha; **pin map and power** from Aga. Update §2.5 to the
+  real pins.
+- Decide joint limits now (e.g. pitch −110°…+20°, roll ±40°, yaw ±145°) because they go in
+  the IK clamp, the servos' angle-limit registers, and protect the cables. The
+  XL-320's 300° travel caps every joint at ±150° around its centre tick.
 - **Done when:** README committed; Pasha and Aga have seen the pin map and axis order.
 
 ### ✅ T2 · Fri 9 · Project skeleton + host test harness · 2 h
@@ -516,7 +622,7 @@ Unplug motor power before rewiring, *every* time.
   build enforces it for you: if it breaks, you've leaked a dependency.
 - **Done when:** both `idf.py build` and `make -C gimbal_fw/host_test` pass.
 
-### T3a · Sat 10 · Kinematics: Python reference + golden vectors · 3 h
+### ✅ T3a · Sat 10 · Kinematics: Python reference + golden vectors · 3 h
 
 - Derive FK/IK for ZXY **on paper** (§4.1 is your answer key, so don't peek first).
 - `landing_sw/gimbal_kinematics.py`: `fk(q)`, `ik(R)`, `clamp_limits(q)`, with
@@ -587,54 +693,53 @@ Unplug motor power before rewiring, *every* time.
 ### T7 · Wed 14 (stretch) · Gimbal sim via ctypes · 3 h
 
 - `stab.c` first version (§4.2). Build `libgimbal_math.so`; `exp_gimbal_stab.py`
-  drives a simulated base (roll/pitch sinusoid 0.5–3 Hz, ±10°) + simple rotor-lag
-  model, calls the *real* `stab_step` → camera pointing error vs time → new Bab 4.2
+  drives a simulated base (roll/pitch sinusoid 0.5–3 Hz, ±10°) + simple servo model
+  (first-order lag + rate limit + 0.29° quantisation), calls the *real* `stab_step` → camera pointing error vs time → new Bab 4.2
   row (e.g. RMS < 1°).
 - First thing to cut if behind; you can still write `stab.c` on Sun 18.
 
 ---
 
-### T8 · Thu 15 (lab) · Open-loop drive, one motor · 5 h
+### T8 · Thu 15 (lab) · XL-320 bus driver, one servo · 5 h
 
-- `foc.c`: MCPWM v5 chain per motor: `mcpwm_new_timer` → `mcpwm_new_operator` +
-  `mcpwm_operator_connect_timer` → `mcpwm_new_comparator` (set
-  `update_cmp_on_tez = true` for glitch-free updates) → `mcpwm_new_generator` →
-  set generator actions for center-aligned PWM. Use ESP-IDF's
-  `examples/peripherals/mcpwm/` as the API reference, not the AI's memory.
-  ```c
-  mcpwm_timer_config_t t = {
-      .group_id = 0, .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
-      .resolution_hz = 20000000,                // 20 MHz tick
-      .count_mode = MCPWM_TIMER_COUNT_MODE_UP_DOWN,
-      .period_ticks = 800,                      // target 25 kHz, VERIFY ON SCOPE
-  };
-  ```
-- Sequence: **scope the 3 outputs with no driver connected** (frequency, duty
-  follows command, 120° phase shift) → DRV8313 with motor on bench PSU (limit 0.5 A)
-  → slow open-loop rotation (`mech_rad += small step` at 1 kHz) → then hold
-  commanded angles.
-- Find: correct pole pairs (command 360° mech → exactly one turn?), direction sign,
-  minimum `u` that holds against a finger, temperature after 5 min.
-- **Watch out:** EN low whenever you change wiring. If the motor buzzes but doesn't
-  turn → wrong pole pairs or a phase disconnected. Hot within a minute → `u` too high.
-- **Done when:** motor goes to commanded angles repeatably, values in `NOTES.md`.
+- `dxl_packet.c` first, **on the laptop**: `crc16_dxl`, `dxl_build`,
+  `dxl_parser_feed` (§4.3). Host tests: CRC vs the e-manual PING example; PING /
+  WRITE / SYNC_WRITE packets byte-for-byte identical to what Aga's sketch sends
+  (print its `pkt[]` over Serial once); the parser fed *echo + reply* returns only
+  the reply; garbage before the header and a wrong CRC are rejected.
+- `xl320.c` on the ESP32: UART2 in RS485 half-duplex mode (§4.3). Sequence: **scope
+  TX + DIR with no servo connected** → PING one servo → READ Present Position →
+  WRITE Goal Position → SYNC_WRITE with one ID.
+- Then the **bus speed-up**, one servo at a time (others unplugged): Return Delay
+  Time → 0, Status Return Level → 1, Baud Rate → 1 M; re-PING at the new baud. If
+  1 M looks bad on the scope, stay at 115200 and drop the servo rate to 50 Hz.
+- Measure: PING round trip, READ round trip, Sync Write duration
+  (`esp_timer_get_time()` around each call, or a logic analyser).
+- **Watch out:** EEPROM registers only accept writes with torque off. A servo whose
+  baud you just changed "disappears" at the old baud: expected, not dead. Keep Aga's
+  sketch as the known-good recovery tool (edit `DXL_BAUD` to match).
+- **Done when:** one servo goes to commanded angles repeatably from ESP-IDF, bus
+  timings in `NOTES.md`, host tests green.
 
 ### T9 · Fri 16 · Control task, boot sequence, timing · 4 h
 
-- `ctrl_task` / `app_main` per §4.4 and §4.6 with real IMU + one motor. Loop stats:
-  min/avg/max loop time and missed notifications, reported every second via log.
+- `ctrl_task` + `servo_task` / `app_main` per §4.4 and §4.6 with real IMU + one
+  servo. Loop stats: min/avg/max loop time and missed notifications; servo cycle
+  time, read timeouts, CRC failures. Reported every second via log.
 - Stub `comms_task` (watchdog only for now).
-- **Done when:** max loop time < 1 ms over 10 min, no task-watchdog resets, boot
-  sequence eases the motor in without a jerk.
+- **Done when:** max loop time < 1 ms over 10 min, servo cycle ≤ 10 ms, no
+  task-watchdog resets, boot sequence walks the servo to NADIR without a jerk.
 
-### T10 · Sat 17 · Three motors + calibration in NVS + on-target tests · 4 h
+### T10 · Sat 17 · Three servos + calibration in NVS + on-target tests · 4 h
 
-- Extend `foc` to 3 motors with the MCPWM allocation from §2.5. Scope-check all 9 outputs.
+- Extend to 3 servos: one Sync Write for all goals, three Reads. (Check whether the
+  XL-320 e-manual lists **Sync Read**; if it does, 3 round trips become 1.)
 - `calib.c`: `calib_t` in NVS + a tiny calibration console command (or compile-time
-  defaults for now): per-axis pole pairs, direction, zero offset.
+  defaults for now): per-axis servo ID, direction, zero tick.
+- Write each servo's CW/CCW Angle Limit (EEPROM) from the joint limits.
 - Flash a test build that runs the golden-vector kinematics and filter tests **on the
   ESP32** (proves float behaviour matches the laptop).
-- **Done when:** 3 motors respond independently; on-target tests pass.
+- **Done when:** 3 servos respond independently; on-target tests pass.
 
 ### T11 · Sun 18 · Single-axis stabilisation (pitch) · 4 h
 
@@ -646,10 +751,12 @@ Unplug motor power before rewiring, *every* time.
 
 ### T12 · Mon 19 · Tuning + open-loop characterisation · 4 h
 
-- Tune `K`, `ω_max`, `u`. Characterise: max base tilt rate before slip, holding
-  temperature at the chosen `u`, settling time for a 10° step.
-- (Stretch) slip detector: when IMU-measured camera tilt disagrees with the expected
-  value by > 360°/p/2 → flag + re-home.
+- Tune `K`, `ω_max`, servo P gain (addr 29) and Moving Speed. Characterise: servo
+  step response (10° goal step, Present Position logged at 100 Hz), dead time,
+  **backlash** (reverse in 1-tick steps until the IMU sees the camera move), max base
+  tilt rate before the servo saturates, temperature and load while holding.
+- (Stretch) fault recovery: Alert bit or no reply → REBOOT → torque on → resume;
+  log every event.
 - **Done when:** numbers in `NOTES.md`; tuning committed as defaults.
 
 ### T13 · Tue 20 · Protocol, both sides · 5 h
@@ -682,13 +789,16 @@ Unplug motor power before rewiring, *every* time.
 
 ### T16 · Thu 22 (lab) · 3-axis bring-up on Pasha's gimbal · 4–5 h
 
-- Mount, then **with motors off** move each joint by hand through its range and check
-  cables. Then one axis at a time: direction sign, zero offset (align to the home
-  marks), joint limits in firmware. Save to NVS.
+- Mount, then **with torque off** move each joint by hand through its range and check
+  cables, watching Present Position live (it must never enter the 60° dead zone).
+  Then one axis at a time: direction sign, `zero_tick` (read Present Position at the
+  mechanical zero), joint limits in firmware **and** in the servo's angle-limit
+  registers. Save to NVS.
 - Verify the **IMU mounting matrix** on the real camera mount (it may differ from
   your bench).
-- **Watch out:** first power-up of each axis with low `u` and your hand near the
-  power switch. Unbalanced camera = slip, so tell Pasha immediately.
+- **Watch out:** first power-up of each axis with low Moving Speed and Torque Limit,
+  your hand near the power switch. Unbalanced camera = servo near stall, hot, and
+  overload shutdowns, so tell Pasha immediately.
 - **Done when:** all 3 joints track commanded angles, no collisions at limits.
 
 ### T17 · Fri 23 · 3-axis stabilisation tuning + measurement · 4 h
@@ -722,7 +832,7 @@ Unplug motor power before rewiring, *every* time.
 
 - Two full rehearsals with the team; a written demo script (who says what, 3–5 min).
 - Record backup videos of every Must/Should item. Spares: ESP32 (pre-flashed),
-  DRV8313, USB cables, jumpers, charged batteries. Hand numbers/figures to Pasha (poster).
+  XL-320 (ID and baud already set!), USB cables, jumpers, charged batteries. Hand numbers/figures to Pasha (poster).
 
 ### Tue 27 · DEMO
 
@@ -735,8 +845,8 @@ still surface (gyro cal) · logs recording · backup videos on laptop.
 
 | Needed from | What | By |
 |---|---|---|
-| Pasha | Axis order, motor model/pole pairs, joint limits, **yaw home mark**, camera balance | Fri 9 (info), Thu 22 (hardware) |
-| Aga | Pin map sign-off, power plan (buck, caps, common ground), Pi↔ESP32 harness | Fri 9 (draft), Wed 21 (final) |
+| Pasha | Axis order, servo-ID-to-joint mapping, horn orientation / joint zero, joint limits, camera balance | Fri 9 (info), Thu 22 (hardware) |
+| Aga | Pin map sign-off (Pi on UART1 25/26, DIR pull-down, MPU INT wire), servo power (7.4 V, caps, common ground), Pi↔ESP32 harness | Fri 9 (draft), Wed 21 (final) |
 | Aga | Progress-report format/deadline | before Wed 14 |
 | You → Pasha | Results, plots, architecture diagram | Mon 26 |
 
@@ -746,10 +856,12 @@ still surface (gyro cal) · logs recording · backup videos on laptop.
 |---|---|
 | frames.py mirror reaches hardware | T3c before any vision-in-the-loop work; physical sign test T18 |
 | Gimbal frame late / unbalanced | Single-axis bench rig is the fallback demo; firmware axis-count agnostic |
-| Open-loop slip → wrong joint belief | Balance, rate limit, sufficient `u`, home mark, (stretch) slip detection |
-| Motor/driver heat | Measured `u` limit (T8/T12), bench PSU current limit |
-| Writing the drive code takes > 1 day | Open-loop only, no current control; ESP-IDF examples as API reference; T9 has slack |
-| AI mixes legacy/new ESP-IDF APIs | Only `i2c_master.h` + `mcpwm_prelude.h`; reject legacy calls on sight |
+| Servo overload shutdown (goes limp mid-demo) | Balance, rate limit, Torque Limit, error-bit monitoring + REBOOT recovery, TELEM flag |
+| 3S pack on the 7.4 V servo bus | Separate, labelled connector/buck; check Present Voltage at boot, refuse torque outside 6–8.4 V |
+| Servo bus too slow / flaky at 1 M | Return Delay 0, Status Return Level 1, Sync Write; fallback 115200 + 50 Hz servo rate |
+| Pointing floor from 0.29° ticks + gear backlash | Measure in T12, quote honestly on the poster |
+| Writing the bus driver takes > 1 day | Aga's sketch is a working reference; pure-C packet layer host-tested first; T9 has slack |
+| AI mixes legacy/new ESP-IDF APIs or Dynamixel control tables | Only `i2c_master.h`; XL-320 addresses only from its own e-manual page |
 | `float`/ISR mistakes | `-Wdouble-promotion`; ISR only notifies |
 | C and Python maths drift apart | Golden vectors on host + on target; `ctypes` sim uses the C lib |
 | IMU vibration on the drone | DLPF, soft mount, accel gating in Mahony |

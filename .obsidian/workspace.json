@@ -50,7 +50,7 @@
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -217,24 +217,24 @@
       "bases:Create new base": false
     }
   },
-  "active": "4729e003d2980b75",
+  "active": "e6d5abb46a6d9501",
   "lastOpenFiles": [
-    "gimbal_fw/host_test/golden_kinematics.csv",
-    "landing_sw/__pycache__/gimbal_kinematics.cpython-312.pyc",
-    "requirements.txt",
-    "requirements.txt.tmp.89025.7429010a0459",
+    "gimbal_fw/main/config_defaults.h.tmp.236582.b628c2f10160",
+    "gimbal_fw/main/config_defaults.h.tmp.236582.e1513fb09a85",
+    "gimbal_fw/components/calib/calib.c.tmp.236582.6ed9ea9cb361",
+    "gimbal_fw/components/calib/calib.h.tmp.236582.fea813ed18e9",
+    "gimbal_fw/main/board.h.tmp.236582.aaef5b27887f",
+    "gimbal_fw/main/board.h.tmp.236582.c478e26289d2",
+    "pasha_mechanical_questionnaire.xlsx",
+    "october_demo_plan.md.tmp.236582.200daf1cf8d6",
+    "october_demo_plan.md.tmp.236582.02cf46c64caa",
+    "october_demo_plan.md.tmp.236582.5c5b87a9f62c",
+    "october_demo_plan.md.tmp.236582.f0fddafb9890",
+    "KINEMATICS-DERIVATION.md",
     "october_demo_plan.md",
-    "gimbal_fw/host_test/test_kinematics.c",
-    "gimbal_fw/components/gimbal_math/kinematics.c",
-    "gimbal_fw/components/gimbal_math/kinematics.h",
-    "gimbal_fw/tools/gen_golden.py",
-    "gimbal_fw/tools",
     "GIMBAL-LOCK.md",
     "Pasted image 20261025213654.png",
-    "KINEMATICS-DERIVATION.md",
     "Pasted image 20261025210505.png",
-    "landing_sw/tests/test_gimbal_kinematics.py",
-    "landing_sw/tests",
     "inverse_kinematics.png",
     "three-axis.png",
     "Pasted image 20260916112044.png",

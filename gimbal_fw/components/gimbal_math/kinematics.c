@@ -10,10 +10,10 @@ void gimbal_fk(const float q[3], mat3_t * R) {
 }
 
 int gimbal_ik(const mat3_t * R, float q[3]) {
-    float s_roll = fminf(fmax(R -> m[2][1], -1.0f), 1.0f); // Sice asinf(1.0000001f) = NaN)
+    float s_roll = fminf(fmaxf(R -> m[2][1], -1.0f), 1.0f); // Sice asinf(1.0000001f) = NaN)
     q[GIMBAL_ROLL] = asinf(s_roll);
     q[GIMBAL_YAW] = atan2f(-R -> m[0][1], R -> m[1][1]);
-    q[GIMBAL_PITCH] = atan2f(-R -> m[2][0], R -> [2][2]);
+    q[GIMBAL_PITCH] = atan2f(-R -> m[2][0], R -> m[2][2]);
     
     return fabsf(s_roll) > 0.995f ? GIMBAL_IK_NEAR_SINGULAR : GIMBAL_IK_OK;
 }

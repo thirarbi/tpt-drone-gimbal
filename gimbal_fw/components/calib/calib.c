@@ -5,10 +5,11 @@
 // Replace with real values from Pasha/measurement, then switch to calib_save()
 // once a calibration routine exists.
 static const calib_t s_default_calib = {
-    .pole_pairs      = {7, 7, 7},                  // TODO(measure): count magnets / 2 per axis
-    .dir             = {1, 1, 1},                  // TODO(measure, T8): confirm sign per axis
-    .zero_offset_rad = {0.0f, 0.0f, 0.0f},          // TODO(calibrate, T10)
-    .gyro_bias       = {0.0f, 0.0f, 0.0f},          // TODO(measured at boot)
+    .version         = 2,
+    .servo_id        = {1, 2, 3},                   // indexed yaw, roll, pitch -- TODO(Pasha + T0.3): which ID is which joint
+    .dir             = {1, 1, 1},                   // TODO(T16): confirm sign per joint
+    .zero_tick       = {512, 512, 512},             // servo centre until T16
+    .gyro_bias      = {0.0f, 0.0f, 0.0f},          // TODO(measured at boot)
     .R_imu_cam       = {                             // TODO(measure T0.5): identity until confirmed
         .m = {
             {1.0f, 0.0f, 0.0f},

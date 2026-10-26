@@ -7,22 +7,24 @@
 #define JOINT_PITCH_MAX_RAD   ( 0.3491f)   //  +20 deg
 #define JOINT_ROLL_MIN_RAD    (-0.6981f)   //  -40 deg
 #define JOINT_ROLL_MAX_RAD    ( 0.6981f)   //  +40 deg
-#define JOINT_YAW_MIN_RAD     (-2.9671f)   // -170 deg
-#define JOINT_YAW_MAX_RAD     ( 2.9671f)   // +170 deg
+#define JOINT_YAW_MIN_RAD     (-2.5307f)   // -145 deg: XL-320 has only 300 deg of travel
+#define JOINT_YAW_MAX_RAD     ( 2.5307f)   // +145 deg
 
 // --- Kinematic chain (§2.3) ---
 // TODO(Pasha): confirm mechanical chain is yaw -> roll -> pitch; tell before changing IK.
 
-// --- Open-loop drive ("FOC"), §4.3 ---
-#define FOC_PHASE_VOLTAGE_V       1.0f     // u: start low -- TODO(measure, T8): raise until it holds, stay <~0.5A
-#define FOC_RAMP_TIME_S           0.5f     // §4.6: ease rotor in over 0.5s on enable
-#define FOC_PHASE_RESISTANCE_OHM  0.0f     // TODO(measure, T0.3): half of phase-to-phase resistance
-
-// --- Bench power / safety (§2.6) ---
-#define BENCH_PSU_CURRENT_LIMIT_A  0.5f    // 0.5-1 A during bench work; never raw LiPo until T10 done
+// --- XL-320 servo bus, §2.4/§4.3 ---
+#define DXL_BAUD                 115200    // Aga's servos today -- TODO(T8): 1000000 after reconfig
+#define SERVO_RATE_HZ            100       // stab_step + bus cycle; 50 if stuck at 115200
+#define SERVO_READ_TIMEOUT_US    5000      // Aga's value; > one read round trip (~2.85 ms @115200) -- TODO(measure, T8)
+#define SERVO_SPEED_BOOT         50        // §4.6: slow walk to NADIR
+#define SERVO_SPEED_RUN          0         // 0 = max -- TODO(tune, T12); Aga used 300
+#define SERVO_QMEAS_STALE_MS     30        // §4.2: fall back to q_cmd when readback is older than this
+#define SERVO_VOLTAGE_MIN_V      6.0f      // XL-320 supply range; refuse torque outside it
+#define SERVO_VOLTAGE_MAX_V      8.4f
 
 // --- Control law (stab_step), §4.2 ---
-#define STAB_GAIN_K            1.0f        // TODO(tune, T11/T12): start ~5 Hz equivalent, raise until it rings, halve
+#define STAB_GAIN_K            1.0f        // TODO(tune, T11/T12): per 100 Hz tick; start ~5 Hz equivalent, raise until it rings, halve
 #define STAB_OMEGA_MAX_RAD_S   3.1416f     // TODO(tune, T12): max joint slew rate
 
 // --- Mahony attitude filter, §T5 ---
@@ -34,10 +36,6 @@
 #define MPU_GYRO_RANGE_DPS    1000
 #define MPU_ACCEL_RANGE_G     4
 #define MPU_DLPF_CONFIG       2     // ~94 Hz BW, ~3ms delay; required for 1kHz output
-
-// --- MCPWM carrier, §4.3/T8 (verify on scope) ---
-#define MCPWM_RESOLUTION_HZ    20000000   // 20 MHz tick
-#define MCPWM_PERIOD_TICKS     800        // target 25 kHz carrier -- TODO(verify on scope)
 
 // --- Protocol / comms timing, §2.4 (fixed by plan) ---
 #define TELEM_RATE_HZ          50
