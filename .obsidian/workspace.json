@@ -50,7 +50,7 @@
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -112,8 +112,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "475109c8ed6659f5",
@@ -218,29 +217,29 @@
       "bases:Create new base": false
     }
   },
-  "active": "e6d5abb46a6d9501",
+  "active": "4729e003d2980b75",
   "lastOpenFiles": [
+    "gimbal_fw/host_test/golden_kinematics.csv",
+    "landing_sw/__pycache__/gimbal_kinematics.cpython-312.pyc",
+    "requirements.txt",
+    "requirements.txt.tmp.89025.7429010a0459",
+    "october_demo_plan.md",
+    "gimbal_fw/host_test/test_kinematics.c",
+    "gimbal_fw/components/gimbal_math/kinematics.c",
+    "gimbal_fw/components/gimbal_math/kinematics.h",
     "gimbal_fw/tools/gen_golden.py",
     "gimbal_fw/tools",
     "GIMBAL-LOCK.md",
     "Pasted image 20261025213654.png",
     "KINEMATICS-DERIVATION.md",
     "Pasted image 20261025210505.png",
-    "october_demo_plan.md",
     "landing_sw/tests/test_gimbal_kinematics.py",
     "landing_sw/tests",
-    "landing_sw/gimbal_kinematics.py",
     "inverse_kinematics.png",
     "three-axis.png",
     "Pasted image 20260916112044.png",
     "companion_computer.md",
-    "gimbal_fw/host_test/test_rot",
-    "gimbal_fw/host_test/Makefile",
-    "gimbal_fw/host_test/test_rot.c",
-    "gimbal_fw/host_test",
     "CLAUDE.md",
-    "gimbal_fw/host_test/Makefile.tmp.61190.4b6973bf832b",
-    "gimbal_fw/host_test/test_rot.c.tmp.61190.6ac7f27e487b",
     "gimbal_fw/notes.md",
     "notes.md",
     "gimbal_fw/README.md",

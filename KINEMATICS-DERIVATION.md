@@ -26,3 +26,9 @@ q[YAW]  = atan2f(-R->m[0][1], R->m[1][1]);
 q[PITCH] = atan2f(-R->m[2][0], R->m[2][2]);
 ```
 
+```
+q_yaw, q_roll, q_pitch,  R00, R01, R02, R10, R11, R12, R20, R21, R22
+└──── q (3 numbers) ───┘ └────────── R = fk(q) (9 numbers) ──────────┘
+```
+
+
