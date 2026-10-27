@@ -14,6 +14,10 @@
 > its constants are folded into §2.5, §2.6 and §4.3. Everything MCPWM / open-loop /
 > pole-pair related is gone. The maths (§4.1, §4.2) is unchanged, except that joint
 > angles are now *measured* instead of assumed.
+>
+> **Rev 3 (27 Oct): testing policy.** Code first, test on risk (§0). Up-front tests
+> are only for silent or expensive failures; everything else gets a test when it
+> breaks. T8, T10 and T13 are trimmed to match.
 
 ---
 
@@ -29,6 +33,26 @@
   material and the poster numbers.
 - **Units in names**: `pitch_rad`, `rate_dps`, `t_us`, `goal_tick`. Radians everywhere
   in C and on the wire; degrees only at the `landing_sw` interface and in plots.
+
+**Testing policy: test on risk, not on coverage**
+- Write the code first. Before it touches hardware, ask: *if this were wrong, would
+  I notice immediately, and would it be cheap?* Two yeses → no test yet. Any no →
+  write a small test first.
+- **Always test first** (silent or expensive when wrong):
+  - frame transforms and sign conventions (`frames.py`, kinematics in Python and C)
+  - the filter and the control law (Mahony, `stab_step`): C must match Python
+  - conventions shared across the C/Python boundary (CRCs, struct field order)
+  - safety paths (joint limits, voltage check, watchdog → NADIR, FSM aborts)
+- **Test after a bug** (fails loudly: timeouts, exceptions, no reply): drivers,
+  comms glue, logging, launchers, `main.py` wiring. When one bites, first write a
+  test that reproduces it (a recorded byte stream or log counts), *then* fix it, and
+  keep the test. Add one line per bug to `NOTES.md`.
+- **Tuning is not unit-tested.** Gains, rates and servo P are tuned from logs, plots
+  and `exp_*.py` experiments.
+- **Lab time counts as expensive.** A pure-C function you'd otherwise debug at the
+  bench deserves a 10-minute host test.
+- Full-pipeline checks run in sim (`main --sim`, `run_all_experiments`,
+  `sitl_harness.py`) before hardware.
 
 **Using your AI assistant (for learning, not just output)**
 - For the maths (IK, filter): **write the first version yourself**, then ask the AI
@@ -281,7 +305,7 @@ Key APIs (signatures only, you write the bodies):
 | `frames.py` | **fix** | mirror bug (T3c) |
 | `config.py` | changed | ESP32 port/baud/protocol constants; remove SimpleBGC; real `CAM_K` |
 | `exp_gimbal_stab.py` | new (stretch) | gimbal sim via `ctypes` → Bab 4.2 row |
-| `tests/` | new | `pytest` for kinematics, proto round-trip, frames determinant |
+| `tests/` | new | `pytest` on risk (§0): kinematics, frames determinant + consistency, proto golden frame; plus one regression test per bug |
 
 ---
 
@@ -640,7 +664,7 @@ Unplug servo power before rewiring, *every* time.
   is (y, x). Angle wrap: compare with `wrap_pi(a−b)`, not `a−b`.
 - **Done when:** host test green, no warnings with `-Wdouble-promotion -Wconversion`.
 
-### T3c · Sun 11 · frames.py mirror bug · 1–2 h · **high priority**
+### ✅ T3c · Sun 11 · frames.py mirror bug · 1–2 h · **high priority**
 
 - `frames.camera_to_body_rotation()` returns a matrix with **determinant −1 for every
   gimbal angle** (`_NADIR_CAM_TO_BODY = diag(1,-1,1)` is a reflection). Camera
@@ -703,10 +727,12 @@ Unplug servo power before rewiring, *every* time.
 ### T8 · Thu 15 (lab) · XL-320 bus driver, one servo · 5 h
 
 - `dxl_packet.c` first, **on the laptop**: `crc16_dxl`, `dxl_build`,
-  `dxl_parser_feed` (§4.3). Host tests: CRC vs the e-manual PING example; PING /
-  WRITE / SYNC_WRITE packets byte-for-byte identical to what Aga's sketch sends
-  (print its `pkt[]` over Serial once); the parser fed *echo + reply* returns only
-  the reply; garbage before the header and a wrong CRC are rejected.
+  `dxl_parser_feed` (§4.3). Host tests up front, since lab time is expensive:
+  `crc16_dxl` vs the e-manual PING example, and the parser fed *echo + reply*
+  returns only the reply. **Test after a bug:** if a servo doesn't answer, compare
+  your packets byte-for-byte with Aga's sketch (print its `pkt[]` over Serial) and
+  keep that comparison as a test. Do the same for garbage or wrong-CRC rejection if
+  the parser misbehaves.
 - `xl320.c` on the ESP32: UART2 in RS485 half-duplex mode (§4.3). Sequence: **scope
   TX + DIR with no servo connected** → PING one servo → READ Present Position →
   WRITE Goal Position → SYNC_WRITE with one ID.
@@ -737,9 +763,10 @@ Unplug servo power before rewiring, *every* time.
 - `calib.c`: `calib_t` in NVS + a tiny calibration console command (or compile-time
   defaults for now): per-axis servo ID, direction, zero tick.
 - Write each servo's CW/CCW Angle Limit (EEPROM) from the joint limits.
-- Flash a test build that runs the golden-vector kinematics and filter tests **on the
-  ESP32** (proves float behaviour matches the laptop).
-- **Done when:** 3 servos respond independently; on-target tests pass.
+- **Test after a bug:** only if on-target behaviour disagrees with the laptop, flash
+  a test build that runs the golden-vector kinematics and filter tests **on the
+  ESP32**. `-Wdouble-promotion` already covers the likely float slips.
+- **Done when:** 3 servos respond independently; angle limits written.
 
 ### T11 · Sun 18 · Single-axis stabilisation (pitch) · 4 h
 
@@ -767,7 +794,10 @@ Unplug servo power before rewiring, *every* time.
 - Python: `gimbal_proto.py` + `ESP32Gimbal` (reader thread, latest TELEM + timestamp
   under a lock, `set_angles()` → `SET_TARGET`). `config.py`: add
   `ESP32_GIMBAL_PORT = "/dev/ttyAMA0"`, baud, remove SimpleBGC bits.
-- pytest: encode→decode round-trip, CRC vs C golden value, garbage-byte resync.
+- pytest for the silent part only: Python decodes a **golden frame produced by the C
+  encoder** (catches CRC mismatches *and* swapped struct fields, e.g. pitch↔roll).
+  Garbage-byte resync gets a test after a bug: a broken parser shows up loudly as a
+  dropped link.
 - **Done when:** from a Pi Python shell, `g.set_angles(-90, 0, 0)` moves the gimbal and
   `g.get_angles()` returns live joint angles.
 
@@ -863,6 +893,7 @@ still surface (gyro cal) · logs recording · backup videos on laptop.
 | Writing the bus driver takes > 1 day | Aga's sketch is a working reference; pure-C packet layer host-tested first; T9 has slack |
 | AI mixes legacy/new ESP-IDF APIs or Dynamixel control tables | Only `i2c_master.h`; XL-320 addresses only from its own e-manual page |
 | `float`/ISR mistakes | `-Wdouble-promotion`; ISR only notifies |
-| C and Python maths drift apart | Golden vectors on host + on target; `ctypes` sim uses the C lib |
+| C and Python maths drift apart | Golden vectors on host (on target if they disagree); `ctypes` sim uses the C lib |
+| Untested glue fails late, on hardware | Sim run before every lab session; regression test per bug (§0 testing policy) |
 | IMU vibration on the drone | DLPF, soft mount, accel gating in Mahony |
 | Live demo failure | Backup videos, sim-only mode, scripted gimbal motion |

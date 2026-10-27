@@ -62,6 +62,20 @@
               "icon": "lucide-file",
               "title": "WHEN-LAB"
             }
+          },
+          {
+            "id": "0e8f208f0506c54e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "notes.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "notes"
+            }
           }
         ],
         "currentTab": 2
@@ -233,18 +247,20 @@
   },
   "active": "e6d5abb46a6d9501",
   "lastOpenFiles": [
-    "WHEN-LAB.md",
+    "notes.md",
+    "october_demo_plan.md.tmp.19137.b422412900fc",
+    "october_demo_plan.md.tmp.19137.85d4bb0b7961",
+    "october_demo_plan.md.tmp.19137.a81e8de7692e",
+    "october_demo_plan.md.tmp.19137.b6aaea5fe1c7",
+    "october_demo_plan.md.tmp.19137.f1bfaf5be52d",
+    "october_demo_plan.md.tmp.19137.f81dd208f3b9",
+    "october_demo_plan.md.tmp.19137.0ebc76dbfd99",
+    "WAIT-PASHA.md",
     "october_demo_plan.md",
+    "landing_sw/tests/__pycache__/test_frames.cpython-312-pytest-9.1.1.pyc",
+    "landing_sw/tests/test_frames.py",
+    "WHEN-LAB.md",
     "gimbal_fw/host_test/test_kinematics",
-    "gimbal_fw/host_test/test_rot",
-    "pytest.ini",
-    "pytest-cache-files-v8ms413a",
-    "landing_sw/tests/__pycache__/test_gimbal_kinematics.cpython-312-pytest-9.1.1.pyc",
-    "landing_sw/tests/__pycache__",
-    "gimbal_fw/main/config_defaults.h.tmp.236582.b628c2f10160",
-    "gimbal_fw/main/config_defaults.h.tmp.236582.e1513fb09a85",
-    "gimbal_fw/components/calib/calib.c.tmp.236582.6ed9ea9cb361",
-    "gimbal_fw/components/calib/calib.h.tmp.236582.fea813ed18e9",
     "KINEMATICS-DERIVATION.md",
     "GIMBAL-LOCK.md",
     "Pasted image 20261025213654.png",
@@ -255,7 +271,6 @@
     "companion_computer.md",
     "CLAUDE.md",
     "gimbal_fw/notes.md",
-    "notes.md",
     "gimbal_fw/README.md",
     "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
     "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
