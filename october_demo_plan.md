@@ -682,6 +682,7 @@ Unplug servo power before rewiring, *every* time.
 - **Done when:** determinant test + consistency test green, suite still passes.
 
 ### T4 · Mon 12 · MPU6050 driver + 1 kHz data-ready loop + dev logger · 4 h
+This part ensures that the signal sent from the gyro and accelerometer is a steady stream of samples at exactly 1000 per second. It's the foundation for the attitude filter. This part is crucial so if something broke downstream, re-check this part.
 
 - `mpu6050.c` on `i2c_master.h`: wake (0x6B), `SMPLRT_DIV`=0, `CONFIG` DLPF=2
   (~94 Hz BW, ~3 ms delay; DLPF must be on for 1 kHz output), gyro ±1000 dps,
