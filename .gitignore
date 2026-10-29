@@ -12,6 +12,8 @@
 /gimbal_fw/host_test/test_rot
 /gimbal_fw/host_test/test_kinematics
 /gimbal_fw/host_test/test_mahony
+/gimbal_fw/host_test/test_stab
+/gimbal_fw/host_test/test_proto
 
 # Python bytecode (gimbal_fw/tools imports mahony_ref)
 /gimbal_fw/tools/__pycache__/
