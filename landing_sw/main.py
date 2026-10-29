@@ -1,10 +1,13 @@
 """main.py -- entry point wiring the full stack into the LandingFSM.
 
-Real mode wires picamera2 + MavlinkInterface + SimpleBGCInterface into the FSM.
 `--sim` swaps in MockMavlink / MockGimbal and a synthetic camera so the whole
 package runs and lands with no hardware attached:
 
     python -m landing_sw.main --sim
+
+Without --sim (on the Pi) it runs the October demo path, demo_vision.py: camera +
+ESP32Gimbal, marker position printed in the body frame. No autopilot is needed;
+arguments after `--` are passed through, e.g. `main -- --camera imx477`.
 
 The sim integrates a simple drone kinematic over a stationary pad at the origin,
 rendering each frame with synthetic_markers, and reports the touchdown residual.
@@ -51,16 +54,18 @@ def run_sim(start_xyz=(1.2, -0.8, 6.0), max_t=40.0, verbose=True):
         machine.step(img, agl, rc="LAND", attitude=(0.0, 0.0, 0.0))
         gimbal.integrate(dt)
         vx, vy, vz = mav.last_setpoint
-        # Integrate drone world pose (yaw 0: body forward/right ~ world x/y; +z down).
-        p[0] += vx * dt
-        p[1] += vy * dt
+        # synthetic_markers renders image-right = world x, image-down = -world y, and at nadir
+        # image-right = body Right, image-down = body Back (frames.R_LINK_OPTICAL). So with yaw 0
+        # the sim world is x = Right, y = Forward, z = Up (T3c step 3: sim agrees with frames.py).
+        p[0] += vy * dt
+        p[1] += vx * dt
         p[2] -= vz * dt
         if agl <= config.FLARE_AGL_M and machine.ekf.initialized:
             touched = True
             resid = float(np.hypot(*machine.ekf.position[:2]))
             if verbose:
-                print(f"  touchdown at AGL={agl:.2f} m, residual={resid*100:.1f} cm, "
-                      f"state={machine.state.value}")
+                print(f"  touchdown at AGL={agl:.2f} m, residual={resid*100:.1f} cm (EKF), "
+                      f"{np.hypot(p[0], p[1])*100:.1f} cm (true), state={machine.state.value}")
             break
     db.commit()
     db.close()
@@ -73,12 +78,12 @@ def main():
     ap = argparse.ArgumentParser(description="Vision precision-landing companion")
     ap.add_argument("--sim", action="store_true",
                     help="run with mock backends + synthetic camera (no hardware)")
-    args = ap.parse_args()
+    args, rest = ap.parse_known_args()
     if args.sim:
         run_sim()
     else:  # pragma: no cover - hardware path
-        raise SystemExit("Hardware mode needs picamera2 + autopilot + gimbal. "
-                         "Use --sim on a laptop.")
+        from . import demo_vision
+        demo_vision.main([a for a in rest if a != "--"])
 
 
 if __name__ == "__main__":

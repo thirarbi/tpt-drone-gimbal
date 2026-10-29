@@ -5,8 +5,9 @@ literals elsewhere. Hardware-dependent figures are tagged inline:
     # MEASURE  -> must be confirmed against real hardware/calibration.
     # TYPICAL  -> datasheet / handbook stand-in until measured.
 
-System: Raspberry Pi 5 companion + ArduCam OV9281 global-shutter mono camera +
-SimpleBGC32 gimbal + SpeedyBee F405 (ArduCopter) over MAVLink/pymavlink. The
+System: Raspberry Pi 5 companion + ArduCam OV9281 global-shutter mono camera
+(ArduCam HQ IMX477 as a test alternative, see camera.py) + 3-axis XL-320 gimbal
+driven by an ESP32 (gimbal_fw) + SpeedyBee F405 (ArduCopter) over MAVLink/pymavlink. The
 companion detects a nested-ArUco landing pad and commands a precision landing,
 including onto a moving target (ITB Teknik Fisika TF3001).
 """
@@ -41,6 +42,15 @@ DETECT_RES          = (640, 400)        # lo-res Y detection stream
 RECORD_RES          = CAM_FULL_RES      # hi-res telemetry stream
 CAM_K  = [[560, 0, 320], [0, 560, 200], [0, 0, 1]]   # MEASURE (for DETECT_RES)
 CAM_DIST = [0, 0, 0, 0, 0]                            # MEASURE k1,k2,p1,p2,k3
+
+# ArduCam HQ (IMX477): test alternative to the OV9281 (camera.py --camera imx477).
+# Colour + rolling shutter: the ISP's luma (Y) plane stands in for the mono image, and
+# fast hand motion skews the marker more. 2028x1520 = 2x2-binned full field of view.
+IMX477_NAME       = "ArduCam HQ IMX477 (colour, rolling shutter)"
+IMX477_FULL_RES   = (2028, 1520)
+IMX477_DETECT_RES = (640, 480)          # 4:3 like the sensor: a scale of full FOV, not a crop
+IMX477_K    = [[611, 0, 320], [0, 611, 240], [0, 0, 1]]   # MEASURE: 6 mm lens estimate (16 mm: fx ~1630)
+IMX477_DIST = [0, 0, 0, 0, 0]                              # MEASURE: run calibrate_camera.py
 
 # --------------------------------------------------------------------------- #
 # Nested ArUco (principle 5: outer at altitude, inner at low altitude)
@@ -113,8 +123,9 @@ BEC_RATED_CURRENT_A = 5.0             # MEASURE -- verify against real BEC
 # --------------------------------------------------------------------------- #
 MAVLINK_CONN       = "udp:127.0.0.1:14550"   # ArduPilot SITL
 MAVLINK_BAUD       = 921600                   # hardware UART
-GIMBAL_SERIAL_PORT = "/dev/serial0"
-GIMBAL_SERIAL_BAUD = 115200
+ESP32_GIMBAL_PORT  = "/dev/ttyAMA0"   # Pi 5 GPIO14/15; serial0 may be the debug header
+ESP32_GIMBAL_BAUD  = 115200           # = PI_UART_BAUD in gimbal_fw config_defaults.h
+ESP32_GIMBAL_TX_HZ = 25.0             # SET_TARGET resend; firmware watchdog is 200 ms
 TELEMETRY_DB_PATH  = "flightlog.sqlite"
 
 # --------------------------------------------------------------------------- #
