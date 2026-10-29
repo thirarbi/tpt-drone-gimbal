@@ -31,3 +31,87 @@ Thus, in `sdkconfig.defaults` it needs to be added a new line:
 ```
 CONFIG_ESP_CONSOLE_UART_CUSTOM=y
 ```
+
+---
+### [Why use ESP-IDF?](https://www.reddit.com/r/esp32/comments/1hyvh8m/hi_what_are_the_benefits_of_using_idf_instead_of/)
+
+So like there was an oversight of using ESP-IDF as a framework for the project without considering *any* alternatives. I thought that this was the *only* way to do it.
+
+The Arduino-ESP32 core is a layer built ontop of ESP-IDF. Their functions call IDF functions underneath, and the `loop()` runs inside a FreeRTOS task. Nothing in this project is say, *impossible* to do in Arduino. The concern is really where the abstraction layer starts costing for each requirements. The plan demands are:
+1. **Sensor-clocked 1kHz loop**
+   Arduino does not let you create FreeRTOS task, but you'd be using IDF's API through a layer meant to hide it.
+2. **Hardware-driven half-duplex servo bus**
+   At 1 Mbit/s with Return Delay 0, the servo replies within microseconds. The electronic's sketch toggles `digitalWrite(DIR)` around the write, which makes the software timing too slow and jittery. 
+
+Right now, the call is just to continue using it because changing frameworks would change very little on the pace of the project to be honest. For the requirements, ESP-IDF gives a much better flexibility on the configs, but those are unecessary for the TPT scope.
+
+---
+### [What is I2C?](https://docs.arduino.cc/learn/communication/wire/)
+It allows you to connect several peripheral devices, such as sensors, displays, motor drivers, and so on, with only a few wires. Giving you lots of flexibility and speeding up your prototyping, without an abundancy of wires. It allows the coexistence of multiple masters and slaves on the same bus,
+
+The I2C (Inter-integrated Circuit) protocol involves using two lines to send and receive data: a serial clock pin **(SCL)** that the board pulses at a regular interval
+
+https://www.youtube.com/watch?v=CAvawEcxoPU&t=14s
+
+![[Pasted image 20261029033245.png]]
+
+A high-level look of I2C frames is the following:
+The master claims the bus using the `start` condition. It then sends the address of the slave it wishes to communicate with, and gives an indication either to `read` or `write`. The slave `Ack`nowledge this and then the data is transmitted and `Ack`. The communication is terminated by a `stop` condition.
+![[Pasted image 20261029033613.png]]
+
+Our code doesn't *follow* this step, they are generated inside `i2c_master_transmit()` and `i2c_master_transmit_receive()` by the ESP-IDF driver. The code supplies the inputs (address, bytes, direction) and the function call marks the transaction boundary.
+
+**Frame 1:** `write_regs()`
+```c
+uint8_t buf[2] = { reg, val };
+return i2c_master_transmit(s_dev, buf, sizeof buf, I2C_TIMEOUT_MS);
+```
+
+```
+S | 0xD0 | A | 0x6B | A | 0x80 | A | P
+    addr+W    reg       value
+```
+
+
+| I2C element       | Who does it                               | Where it comes from in the code                                                                                                  |
+| ----------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Start**         | Driver                                    | Beginning of every `i2c_master_transmit` call                                                                                    |
+| **Slave address** | Driver                                    | `.device_address = MPU_ADDR` (0x68) in `dev_cfg`, set once in `mpu6050_init`. The driver shifts it left by 1: `0x68 << 1 = 0xD0` |
+| **R/W bit**       | Driver                                    | Implied by the function. `transmit` means **W** (bit = 0), so you never write this bit yourself                                  |
+| **Acknowledge**   | Slave pulls SDA low; the driver checks it | No explicit code. A missing ACK makes the call return an error, which `ESP_RETURN_ON_ERROR` catches                              |
+| **Data**          | You                                       | `buf[0] = reg`, `buf[1] = val`                                                                                                   |
+| **Stop**          | Driver                                    | End of the call                                                                                                                  |
+**Frame 2:** `read_regs()`
+
+```c
+return i2c_master_transmit_receive(s_dev, &reg, 1, dst, len, I2C_TIMEOUT_MS);
+```
+
+Example: `read_regs(0x3B, b, 14)`
+
+```
+S | 0xD0 | A | 0x3B | A | Sr | 0xD1 | A | D0 | A | D1 | A | ... | D13 | NA | P
+    addr+W      reg         addr+R         b[0]     b[1]          b[13]
+```
+
+|I2C element|Who does it|Where it comes from in your code|
+|---|---|---|
+|**Start**|Driver|Start of the call|
+|**Slave address**|Driver|Sent twice, both times from `MPU_ADDR`|
+|**R/W bit**|Driver|`transmit_receive` always does a **W phase** (0xD0) and then an **R phase** (0xD1)|
+|**Acknowledge (slave)**|Slave|After the address bytes and after the register byte|
+|**Data, write phase**|You|`&reg, 1`: the register address you want to read from|
+|**Repeated Start (Sr)**|Driver|Between the two phases. The bus is never released, so nothing can interleave|
+|**Data, read phase**|Slave sends, driver stores|Bytes land in `dst` (your `b[14]`)|
+|**Acknowledge (master)**|Driver|It ACKs every received byte except the last, where it sends **NACK** to tell the slave “that’s enough”|
+|**Stop**|Driver||
+I2C itself has no concept of registers. From the bus’s point of view, the register number `0x3B` is just the **first data byte** of the write phase. The MPU6050 interprets that byte as “set my internal register pointer here”. That is a chip convention layered on top of I2C, and it is why reading needs the write-then-read pair.
+
+---
+GPIO8 in RASPI connects to GPIO26 in ESP
+GPIO10 - GPIO25
+
+
+
+---
+### What is Endianness?

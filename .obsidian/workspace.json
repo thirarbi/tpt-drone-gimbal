@@ -13,12 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "companion_computer.md",
+                "file": "notes.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "companion_computer"
+              "title": "notes"
+            }
+          },
+          {
+            "id": "36a9f424deda8c67",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "TARGET-METRICS.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "TARGET-METRICS"
             }
           },
           {
@@ -28,7 +42,7 @@
               "type": "markdown",
               "state": {
                 "file": "KINEMATICS-DERIVATION.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
@@ -42,7 +56,7 @@
               "type": "markdown",
               "state": {
                 "file": "october_demo_plan.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
@@ -83,16 +97,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "curriculum/10_c_and_memory_for_firmware.md",
+                "file": "DECISIONS.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "10_c_and_memory_for_firmware"
+              "title": "DECISIONS"
             }
           }
-        ],
-        "currentTab": 5
+        ]
       }
     ],
     "direction": "vertical"
@@ -154,8 +167,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "475109c8ed6659f5",
@@ -260,43 +272,47 @@
       "bases:Create new base": false
     }
   },
-  "active": "0e8f208f0506c54e",
+  "active": "1a35595830070e5b",
   "lastOpenFiles": [
-    "DECISIONS.md",
-    "curriculum/10_c_and_memory_for_firmware.md",
-    "curriculum/10_c_and_memory_for_firmware.md.tmp.193262.0879c764f943",
-    "README.md",
+    "october_demo_plan.md",
     "notes.md",
-    "gimbal_fw/components/mpu6050/mpu6050.h",
+    "gimbal_fw/components/mpu6050/REGISTERS.md",
+    "Pasted image 20261029033613.png",
+    "Pasted image 20261029033245.png",
+    "companion_computer.md",
+    "landing_sw/DIAGRAMS.md",
+    "landing_sw/SEQUENCE.md",
+    "GIMBAL-LOCK.md",
+    "DECISIONS.md",
+    "CLAUDE.md",
+    "three-axis.png",
+    "Pasted image 20261025213654.png",
+    "Pasted image 20261025210505.png",
+    "Pasted image 20260916112044.png",
+    "KINEMATICS-DERIVATION.md",
+    "curriculum/01_system_overview.md",
+    "WAIT-PASHA.md",
+    "WHEN-LAB.md",
+    "README.md",
+    "TARGET-METRICS.md",
+    "curriculum/10_c_and_memory_for_firmware.md",
     "gimbal_fw/components/mpu6050/mpu6050.c",
+    "curriculum/10_c_and_memory_for_firmware.md.tmp.193262.0879c764f943",
+    "gimbal_fw/components/mpu6050/mpu6050.h",
     "gimbal_fw/components/mpu6050/CMakeLists.txt",
     "gimbal_fw/T4_decisions.md",
     "gimbal_fw/T4_decisions.md.tmp.9856.d96d98547dbc",
-    "october_demo_plan.md",
     "gimbal_fw/build/CMakeFiles/TargetDirectories.txt.tmp7392b",
     "gimbal_fw/build/esp-idf/gimbal_math/cmake_install.cmake.tmpa45b6",
     "gimbal_fw/build/esp-idf/esp_http_server/cmake_install.cmake.tmpfafcc",
     "gimbal_fw/build/esp-idf/esp_hal_lcd/cmake_install.cmake.tmp1e3a6",
     "gimbal_fw/build/esp-idf/sdmmc/cmake_install.cmake.tmp23a36",
-    "WAIT-PASHA.md",
-    "WHEN-LAB.md",
-    "KINEMATICS-DERIVATION.md",
-    "GIMBAL-LOCK.md",
-    "Pasted image 20261025213654.png",
-    "Pasted image 20261025210505.png",
     "inverse_kinematics.png",
-    "three-axis.png",
-    "Pasted image 20260916112044.png",
-    "companion_computer.md",
-    "CLAUDE.md",
     "gimbal_fw/notes.md",
     "gimbal_fw/README.md",
     "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
     "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
     "datasheets/xl320_motor_files/icon_task10_Vmcy.webp",
-    "datasheets/xl320_motor_files/cm-550_product_Vmcy.png",
-    "datasheets/xl320_motor_files/p-series_Vmcy.webp",
-    "curriculum/01_system_overview.md",
     "curriculum/00_README.md",
     "notes/Untitled.md"
   ]
