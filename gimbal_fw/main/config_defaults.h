@@ -48,6 +48,9 @@
 
 // --- MPU6050 per-unit calibration, see MPU-CALIBRATION.md ---
 #define MPU_CALIB_SIXPOSE     0     // 1 = run the ~45 s six-pose accel test at boot (blocks start-up); 0 = normal boot
+#define T8_BUS_TEST   1   // 1 = run the XL-320 bring-up sequence at boot instead of ctrl_task
+#define T8_SPEEDUP    0   // 1 = ONE-SHOT: write Return Delay 0 / SRL 1 / 1 Mbit/s to the servo, then switch the host
+
 
 // --- Protocol / comms timing, §2.4 (fixed by plan) ---
 #define TELEM_RATE_HZ          50

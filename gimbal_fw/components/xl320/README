@@ -1,0 +1,4 @@
+## What is CRC?
+Cyclic Redundancy Check is a checksum built from polynomial divisoin. The sender treats the message bits as one large polynomial over GF(2) (every coefficient is 0 or 1, and addition is XOR). It divides that polynomial by a fixed generator polynomial and appends the remainder. The receiver repeats the division and compares. If any bit changed in transit, the remainder almost certainly differ.
+
+A CRC protects against noise.

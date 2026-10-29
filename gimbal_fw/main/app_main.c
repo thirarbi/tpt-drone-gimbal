@@ -3,9 +3,11 @@
 #include "config_defaults.h"
 #include "ctrl_task.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "mpu6050.h"
+#include "xl320.h"
 #include <math.h>
 
 #define RAD2DEG (180.0f / 3.14159265f)
@@ -59,6 +61,36 @@ void app_main(void)
                  "XYZ"[a], (double)plus[a], (double)minus[a],
                  (double)((plus[a] + minus[a]) / 2.0f), (double)((plus[a] - minus[a]) / 2.0f));
     }
+#endif
+
+#if T8_BUS_TEST
+    ESP_ERROR_CHECK(xl320_init(DXL_UART_NUM, DXL_BAUD, DXL_TX_GPIO, DXL_RX_GPIO, DXL_DIR_GPIO));
+    const uint8_t id = 1;
+
+    #if T8_SPEEDUP
+    xl320_torque(id, false); // EEPROM writes only work with torque off
+    xl320_write_u8(id, 5, 0);
+    xl320_set_srl(id, 1);
+    xl320_write_u8(id, 4, 3);
+    xl320_set_baud(1000000); // Move host to match
+    vTaskDelay(pdMS_TO_TICKS(50));
+    ESP_LOGI(TAG, "ping @1M = %d", xl320_ping(id));
+    #endif
+
+    for (;;) {
+        int64_t t0 = esp_timer_get_time();
+        int r = xl320_ping(id);
+        int64_t t1 = esp_timer_get_time();
+        uint16_t pos = 0;
+
+        int r2 = xl320_read_u16(id, 37, &pos); // Present Position
+        int64_t t2 = esp_timer_get_time();
+
+        ESP_LOGI(TAG, "ping=%d (%" PRId64 " us)  read=%d pos=%u (%" PRId64 " us)",
+                 r, t1 - t0, r2, pos, t2 - t1);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
 #endif
 
     ctrl_task_start();
