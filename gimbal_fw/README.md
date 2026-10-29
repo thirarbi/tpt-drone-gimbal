@@ -1,9 +1,10 @@
 ## To initiate
 ```bash
 source .venv/bin/activate
-. ~/.espressif/v6.1/esp-idf/export.sh
-
+source ~/.espressif/v6.1/esp-idf/export.sh
 ```
+
+If there were any changes regarding CMake or whatever, do `deactivate` first, and then `source ~/.espressif/v6.1/esp-idf/export.sh` again
 
 ## Block Diagram
 ```

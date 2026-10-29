@@ -41,6 +41,14 @@
 #define MPU_ACCEL_RANGE_G     4
 #define MPU_DLPF_CONFIG       2     // ~94 Hz BW, ~3ms delay; required for 1kHz output
 
+// --- What clocks ctrl_task (plan Rev 4) ---
+// 1 = MPU6050 data-ready IRQ on MPU_INT_GPIO (plan §2.4, needs the INT wire)
+// 0 = 1 ms FreeRTOS tick (no INT wire; needs CONFIG_FREERTOS_HZ=1000). Current setting.
+#define MPU_USE_INT           0
+
+// --- MPU6050 per-unit calibration, see MPU-CALIBRATION.md ---
+#define MPU_CALIB_SIXPOSE     0     // 1 = run the ~45 s six-pose accel test at boot (blocks start-up); 0 = normal boot
+
 // --- Protocol / comms timing, §2.4 (fixed by plan) ---
 #define TELEM_RATE_HZ          50
 #define SET_TARGET_RATE_HZ_MIN 20

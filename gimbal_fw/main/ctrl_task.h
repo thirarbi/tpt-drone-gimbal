@@ -5,8 +5,8 @@
 
 typedef struct {            // written by ctrl_task, read by app_main (dev only, no lock)
     uint32_t n;             // samples read
-    uint32_t missed;        // notifications beyond the first
-    uint32_t timeouts;      // 5 ms with no data-ready edge
+    uint32_t missed;        // INT mode: notifications beyond the first. Polled mode: late 1 ms wake-ups
+    uint32_t timeouts;      // INT mode only: 5 ms with no data-ready edge (always 0 when polled)
     uint32_t read_err;
     uint32_t read_sum_us;
     uint32_t read_max_us;

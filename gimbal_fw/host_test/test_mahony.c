@@ -89,6 +89,7 @@ int main(void) {
     test_golden("golden_mahony.csv");
     test_static_converges();
     test_gate_skips_accel();
+    test_integral_clamped();
     printf("test_mahony: OK\n");
     return 0;
 }
