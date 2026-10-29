@@ -47,3 +47,8 @@
 #define IMU_SAMPLE_RATE_HZ     1000
 #define CTRL_LOOP_RATE_HZ      1000
 #define CTRL_LOOP_BUDGET_US    400
+
+// --- T4 dev logger, DECISIONS §5 ---
+#define T4_STREAM      0        // 0 = measure (stats text once a second), 1 = record (binary frames)
+#define T4_QUEUE_LEN   1024     // ~1 s of frames
+#define MPU_I2C_HZ     400000
