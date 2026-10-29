@@ -36,3 +36,8 @@ float wrap_pi(float a) {
     }
     return a - PI_F;
 }
+
+void mat3_vec(const mat3_t *A, const float v[3], float out[3]) {
+    for (int i = 0; i < 3; i++)
+        out[i] = A->m[i][0]*v[0] + A->m[i][1]*v[1] + A->m[i][2]*v[2];
+}

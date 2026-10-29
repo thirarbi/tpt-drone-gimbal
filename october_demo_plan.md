@@ -681,7 +681,9 @@ Unplug servo power before rewiring, *every* time.
 - Physical confirmation comes in T18 (marker to the drone's right → body y > 0).
 - **Done when:** determinant test + consistency test green, suite still passes.
 
-### T4 · Mon 12 · MPU6050 driver + 1 kHz data-ready loop + dev logger · 4 h
+### ✅ T4 · Mon 12 · MPU6050 driver + 1 kHz data-ready loop + dev logger · 4 h
+> **Status (29 Oct): code finished and builds, NOT tested on hardware.** Waiting on circuit corrections from my partner (incl. the MPU INT → GPIO35 wire). Still to do once the board works: read the 1 Hz stats line in `app_main` (rate, `missed`, read time, flat-Z raw count). The binary logger, `tools/serial_log.py` and the two 60 s logs are deferred (T5's real-data checks need them).
+
 This part ensures that the signal sent from the gyro and accelerometer is a steady stream of samples at exactly 1000 per second. It's the foundation for the attitude filter. This part is crucial so if something broke downstream, re-check this part.
 
 - `mpu6050.c` on `i2c_master.h`: wake (0x6B), `SMPLRT_DIV`=0, `CONFIG` DLPF=2

@@ -83,12 +83,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "WHEN-LAB.md",
-                "mode": "preview",
+                "file": "gimbal_fw/tools/MAHONY-FILTER.md",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "WHEN-LAB"
+              "title": "MAHONY-FILTER"
             }
           },
           {
@@ -105,7 +105,8 @@
               "title": "DECISIONS"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -167,7 +168,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "475109c8ed6659f5",
@@ -272,9 +274,28 @@
       "bases:Create new base": false
     }
   },
-  "active": "1a35595830070e5b",
+  "active": "e6d5abb46a6d9501",
   "lastOpenFiles": [
+    "gimbal_fw/host_test/test_mahony.c",
+    "gimbal_fw/components/gimbal_math/mahony.c",
+    "gimbal_fw/components/gimbal_math/mahony.h",
+    "DECISIONS.md",
+    "gimbal_fw/tools/GEN-GOLDEN.md",
+    "GEN-GOLDEN.md",
+    "gimbal_fw/tools/MAHONY-FILTER.md",
+    "gimbal_fw/tools/gen_golden_mahony.py",
+    "gimbal_fw/tools/MAHONY-FILTER.md.tmp.116641.1392bf4243b9",
+    "Pasted image 20261029190755.png",
+    "WHEN-LAB.md",
     "october_demo_plan.md",
+    "gimbal_fw/tools/mahony_ref.py",
+    "README.md",
+    "october_demo_plan.md.tmp.28783.cb8aca7d621f",
+    "gimbal_fw/build/CMakeFiles/gimbal_fw.elf.dir/project_elf_src_esp32.c.obj.d",
+    "gimbal_fw/build/esp-idf/main/CMakeFiles/__idf_main.dir/ctrl_task.c.obj",
+    "gimbal_fw/build/esp-idf/esp_app_format/stAzuEhn",
+    "gimbal_fw/build/esp-idf/esp_app_format/st4sCPW5",
+    "gimbal_fw/main/README.md",
     "notes.md",
     "gimbal_fw/components/mpu6050/REGISTERS.md",
     "Pasted image 20261029033613.png",
@@ -283,7 +304,6 @@
     "landing_sw/DIAGRAMS.md",
     "landing_sw/SEQUENCE.md",
     "GIMBAL-LOCK.md",
-    "DECISIONS.md",
     "CLAUDE.md",
     "three-axis.png",
     "Pasted image 20261025213654.png",
@@ -292,27 +312,14 @@
     "KINEMATICS-DERIVATION.md",
     "curriculum/01_system_overview.md",
     "WAIT-PASHA.md",
-    "WHEN-LAB.md",
-    "README.md",
     "TARGET-METRICS.md",
     "curriculum/10_c_and_memory_for_firmware.md",
-    "gimbal_fw/components/mpu6050/mpu6050.c",
-    "curriculum/10_c_and_memory_for_firmware.md.tmp.193262.0879c764f943",
-    "gimbal_fw/components/mpu6050/mpu6050.h",
-    "gimbal_fw/components/mpu6050/CMakeLists.txt",
     "gimbal_fw/T4_decisions.md",
-    "gimbal_fw/T4_decisions.md.tmp.9856.d96d98547dbc",
-    "gimbal_fw/build/CMakeFiles/TargetDirectories.txt.tmp7392b",
-    "gimbal_fw/build/esp-idf/gimbal_math/cmake_install.cmake.tmpa45b6",
-    "gimbal_fw/build/esp-idf/esp_http_server/cmake_install.cmake.tmpfafcc",
-    "gimbal_fw/build/esp-idf/esp_hal_lcd/cmake_install.cmake.tmp1e3a6",
-    "gimbal_fw/build/esp-idf/sdmmc/cmake_install.cmake.tmp23a36",
     "inverse_kinematics.png",
     "gimbal_fw/notes.md",
     "gimbal_fw/README.md",
     "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
     "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
-    "datasheets/xl320_motor_files/icon_task10_Vmcy.webp",
     "curriculum/00_README.md",
     "notes/Untitled.md"
   ]
