@@ -42,6 +42,9 @@ static int txrx(uint8_t id, uint8_t inst, const uint8_t *params, uint16_t n,
         return 0;
     }
 
+    // uart_write_bytes only queues. Start the timeout once our packet (and any queued before it,
+    // e.g. a SYNC WRITE) is on the wire; a reply arriving meanwhile waits in the RX buffer.
+    uart_wait_tx_done(s_uart, pdMS_TO_TICKS(10));
     dxl_parser_reset(ps);
     int64_t deadline = esp_timer_get_time() + XL320_TIMEOUT_US;
 
@@ -65,13 +68,29 @@ static int txrx(uint8_t id, uint8_t inst, const uint8_t *params, uint16_t n,
 int xl320_ping(uint8_t id)
 { dxl_parser_t p; return txrx(id, DXL_INST_PING, NULL, 0, true, &p); }
 
-int xl320_read_u16(uint8_t id, uint16_t addr, uint16_t *v)
+static int read_reg(uint8_t id, uint16_t addr, uint16_t size, uint16_t *v)
 {
-    uint8_t prm[4] = { (uint8_t)(addr & 0xFF), (uint8_t)(addr >> 8), 2, 0 };  // addr L/H, length L/H
+    uint8_t prm[4] = { (uint8_t)(addr & 0xFF), (uint8_t)(addr >> 8), (uint8_t)size, 0 };  // addr L/H, length L/H
     dxl_parser_t p;
     int r = txrx(id, DXL_INST_READ, prm, 4, true, &p);
-    if (r == 0) *v = (uint16_t)(dxl_status_data(&p)[0] | (dxl_status_data(&p)[1] << 8));
+    if (r < 0) return r;
+    if (dxl_status_ndata(&p) < size) return XL320_ERR_BAD;
+    const uint8_t *d = dxl_status_data(&p);
+    *v = (size == 1) ? d[0] : (uint16_t)(d[0] | (d[1] << 8));
+    return r;   // > 0: servo error byte, but the data is still valid (e.g. Alert while overloaded)
+}
+
+int xl320_read_u8(uint8_t id, uint16_t addr, uint8_t *v)
+{
+    uint16_t w = 0;
+    int r = read_reg(id, addr, 1, &w);
+    if (r >= 0) *v = (uint8_t)w;
     return r;
+}
+
+int xl320_read_u16(uint8_t id, uint16_t addr, uint16_t *v)
+{
+    return read_reg(id, addr, 2, v);
 }
 
 // WRITE: params = addr L/H, then 1 or 2 data bytes (little-endian)
@@ -101,13 +120,19 @@ int xl320_write_u16(uint8_t id, uint16_t addr, uint16_t v) {
 }
 
 int xl320_torque(uint8_t id, bool on) {
-    return xl320_write_u8(id, 24, on ? 1 : 0); // Torque Enable
+    return xl320_write_u8(id, XL320_ADDR_TORQUE_ENABLE, on ? 1 : 0);
+}
+
+// Clears overload/overheat shutdown. The servo needs a moment before it answers again.
+int xl320_reboot(uint8_t id) {
+    dxl_parser_t p;
+    return txrx(id, DXL_INST_REBOOT, NULL, 0, s_srl == 2, &p);
 }
 
 int xl320_set_srl(uint8_t id, uint8_t level) {
     
     // the reply to this write, if any, still follows the OLD level
-    int r = xl320_write_u8(id, 17, level);
+    int r = xl320_write_u8(id, 17, level); // Status Return Level
 
     // A timeout here means the servo was already at 1 from a previous run (EEPROM persists
     // across power cycles, but s_srl restarts at 2). The write went through anyway.
@@ -131,8 +156,7 @@ int xl320_sync_write_goal(const uint8_t ids[], const uint16_t ticks[], int n) {
     assert(n >= 1 && n <= 3); // prm[] holds 3 servos
     uint16_t k = 0;
 
-    // Goal Position, addr 30
-    prm[k++] = 30; 
+    prm[k++] = XL320_ADDR_GOAL_POSITION;
     prm[k++] = 0;
 
     // 2 bytes per servo

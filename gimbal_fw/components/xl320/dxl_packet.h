@@ -34,3 +34,4 @@ int dxl_parser_feed(dxl_parser_t *p, uint8_t b);
 static inline uint8_t        dxl_status_id(const dxl_parser_t *p) { return p->buf[4]; }
 static inline uint8_t        dxl_status_err(const dxl_parser_t *p) { return p->buf[8]; }
 static inline const uint8_t *dxl_status_data(const dxl_parser_t *p){ return &p->buf[9]; }
+static inline uint16_t       dxl_status_ndata(const dxl_parser_t *p){ return (uint16_t)((p->buf[5] | (p->buf[6] << 8)) - 4); } // LEN - INST - ERR - CRC
