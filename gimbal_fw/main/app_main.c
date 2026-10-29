@@ -18,7 +18,7 @@ void app_main(void)
     ctrl_stats_t prev = g_ctrl_stats;
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        ctrl_stats_t cur = = g_ctrl_stats;
+        ctrl_stats_t cur = g_ctrl_stats;
         uint32_t dn = cur.n - prev.n;
 
         ESP_LOGI(TAG,   "rate=%" PRIu32 " Hz missed=%" PRIu32 " timeouts=%" PRIu32
@@ -35,6 +35,7 @@ void app_main(void)
                 cur.last.acc[0],
                 cur.last.acc[1],
                 cur.last.acc[2]
-        )
+        );
+        prev = cur;
     }
 }

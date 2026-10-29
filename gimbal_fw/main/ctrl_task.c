@@ -1,7 +1,6 @@
 #include "ctrl_task.h"
 #include "board.h"
 #include "config_defaults.h"
-#include "log_task.h"
 #include "mpu6050.h"
 #include "driver/gpio.h"
 #include "esp_attr.h"
@@ -13,7 +12,7 @@ ctrl_stats_t g_ctrl_stats;
 static TaskHandle_t s_ctrl;
 
 static void IRAM_ATTR imu_drdy_isr(void * arg) {
-    BaseType_t woken = pdFalse;
+    BaseType_t woken = pdFALSE;
     vTaskNotifyGiveFromISR(s_ctrl, &woken);
     portYIELD_FROM_ISR(woken);
 }
