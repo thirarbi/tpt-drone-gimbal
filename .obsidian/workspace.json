@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "october_demo_plan.md",
+                "file": "TESTING.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "october_demo_plan"
+              "title": "TESTING"
             }
           },
           {
@@ -276,25 +276,28 @@
   },
   "active": "e6d5abb46a6d9501",
   "lastOpenFiles": [
-    "gimbal_fw/main/ctrl_task.c.tmp.116641.6d1dea3f1dc9",
-    "gimbal_fw/host_test/golden_mahony.csv",
-    "gimbal_fw/tools/__pycache__/mahony_ref.cpython-312.pyc",
-    "gimbal_fw/tools/__pycache__",
-    "gimbal_fw/host_test/test_mahony.c",
-    "gimbal_fw/components/gimbal_math/mahony.c",
-    "gimbal_fw/components/gimbal_math/mahony.h",
+    "october_demo_plan.md",
+    "gimbal_fw/build/esp-idf/esp_app_format/stetYlZN",
+    "gimbal_fw/build/esp-idf/esp_app_format/st7OBu0V",
+    "gimbal_fw/build/esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj.d",
+    "gimbal_fw/build/CMakeCache.txt.tmp9559a",
+    "gimbal_fw/build/esp-idf/xl320/cmake_install.cmake.tmpda2af",
+    "gimbal_fw/build/esp-idf/esp_hal_ledc/cmake_install.cmake.tmpc4ca4",
+    "gimbal_fw/build/esp-idf/esp_coex/cmake_install.cmake.tmpc81e6",
+    "gimbal_fw/build/esp-idf/esp_timer/cmake_install.cmake.tmp33972",
+    "gimbal_fw/build/esp-idf/esp_libc/cmake_install.cmake.tmp19217",
+    "gimbal_fw/build/esp-idf/freertos/cmake_install.cmake.tmp56e83",
+    "landing_sw/README.md",
+    "gimbal_fw/components/README.md",
+    "TESTING.md",
+    "gimbal_fw/MPU-CALIBRATION.md",
     "DECISIONS.md",
     "gimbal_fw/tools/GEN-GOLDEN.md",
     "GEN-GOLDEN.md",
     "gimbal_fw/tools/MAHONY-FILTER.md",
-    "gimbal_fw/tools/gen_golden_mahony.py",
-    "gimbal_fw/tools/MAHONY-FILTER.md.tmp.116641.1392bf4243b9",
     "Pasted image 20261029190755.png",
     "WHEN-LAB.md",
-    "october_demo_plan.md",
-    "gimbal_fw/tools/mahony_ref.py",
     "README.md",
-    "october_demo_plan.md.tmp.28783.cb8aca7d621f",
     "gimbal_fw/main/README.md",
     "notes.md",
     "gimbal_fw/components/mpu6050/REGISTERS.md",
@@ -316,11 +319,7 @@
     "curriculum/10_c_and_memory_for_firmware.md",
     "gimbal_fw/T4_decisions.md",
     "inverse_kinematics.png",
-    "gimbal_fw/notes.md",
-    "gimbal_fw/README.md",
     "datasheets/xl320_motor_files/thormang3_Vmcy.webp",
-    "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp",
-    "curriculum/00_README.md",
-    "notes/Untitled.md"
+    "datasheets/xl320_motor_files/hx5-d20_Vmcy.webp"
   ]
 }
