@@ -9,6 +9,7 @@
 #include "mpu6050.h"
 #include "servo_task.h"
 #include "xl320.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -223,6 +224,44 @@ static void servo_speedup(const calib_t *cal) {
     idle_forever();
 }
 
+// T8 wiring check, no servo power needed: TX and DIR as plain GPIOs, RX reads the DATA line.
+static void pin_test(void) {
+    static const struct { int dir, tx, want; const char *what; } step[] = {
+        {1, 0, 0, "buffer ON,  TX low  -> DATA must be LOW "},
+        {1, 1, 1, "buffer ON,  TX high -> DATA must be HIGH"},
+        {0, 0, 1, "buffer OFF, TX low  -> DATA must stay HIGH (10k pull-up)"},
+    };
+    gpio_reset_pin(DXL_TX_GPIO);
+    gpio_reset_pin(DXL_DIR_GPIO);
+    gpio_reset_pin(DXL_RX_GPIO);
+    gpio_set_direction(DXL_TX_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DXL_DIR_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DXL_RX_GPIO, GPIO_MODE_INPUT);
+    for (;;) {
+        int pass = 0;
+        gpio_set_pull_mode(DXL_RX_GPIO, GPIO_FLOATING);
+        for (int i = 0; i < 3; i++) {
+            gpio_set_level(DXL_DIR_GPIO, (uint32_t)step[i].dir);
+            gpio_set_level(DXL_TX_GPIO, (uint32_t)step[i].tx);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            int rx = gpio_get_level(DXL_RX_GPIO);
+            pass += rx == step[i].want;
+            ESP_LOGI(TAG, "%s: RX=%d %s", step[i].what, rx, rx == step[i].want ? "OK" : "FAIL");
+        }
+        // The external 10k pull-up must beat the ~45k internal pull-down if GPIO16 really is on DATA
+        gpio_set_pull_mode(DXL_RX_GPIO, GPIO_PULLDOWN_ONLY);
+        vTaskDelay(pdMS_TO_TICKS(10));
+        int rx = gpio_get_level(DXL_RX_GPIO);
+        pass += rx == 1;
+        ESP_LOGI(TAG, "buffer OFF + internal pull-down on RX: RX=%d %s", rx,
+                 rx ? "OK" : "FAIL: GPIO16 is not on the DATA net, or the 10k pull-up is missing");
+        gpio_set_level(DXL_DIR_GPIO, 0);
+        ESP_LOGI(TAG, "%s", pass == 4 ? "pin test PASS: the ESP32 side of the bus is wired right" :
+                 "pin test FAIL: check GPIO17->pin2, GPIO4->pin1, pin3->DATA->GPIO16, pin14=3V3, pin7=GND");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+}
+
 void bench_run(int app_mode) {
     calib_t cal;
     calib_load(&cal);
@@ -232,6 +271,7 @@ void bench_run(int app_mode) {
     case APP_JOINT_MONITOR: joint_monitor(&cal); break;
     case APP_MPU_SIXPOSE:   mpu_sixpose(); break;
     case APP_SERVO_SPEEDUP: servo_speedup(&cal); break;
+    case APP_PIN_TEST:      pin_test(); break;
     default: ESP_LOGE(TAG, "unknown APP_MODE %d", app_mode); break;
     }
     idle_forever();

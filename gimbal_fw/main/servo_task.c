@@ -12,8 +12,6 @@
 #define XL320_RAD_PER_TICK  (300.0f / 1023.0f * 0.017453293f)   // ~0.0051183 rad
 
 static const char *TAG = "servo";
-static const float s_qmin[3] = {JOINT_YAW_MIN_RAD, JOINT_ROLL_MIN_RAD, JOINT_PITCH_MIN_RAD};
-static const float s_qmax[3] = {JOINT_YAW_MAX_RAD, JOINT_ROLL_MAX_RAD, JOINT_PITCH_MAX_RAD};
 
 servo_stats_t g_servo_stats;
 static calib_t s_cal;
@@ -29,6 +27,10 @@ float servo_tick_to_rad(const calib_t *c, int j, uint16_t tick) {
     return (float)c->dir[j] * (float)((int)tick - (int)c->zero_tick[j]) * XL320_RAD_PER_TICK;
 }
 
+#if SERVO_WRITE_ANGLE_LIMITS
+static const float s_qmin[3] = {JOINT_YAW_MIN_RAD, JOINT_ROLL_MIN_RAD, JOINT_PITCH_MIN_RAD};
+static const float s_qmax[3] = {JOINT_YAW_MAX_RAD, JOINT_ROLL_MAX_RAD, JOINT_PITCH_MAX_RAD};
+
 // T10: servo-side safety net. EEPROM (torque must be off) and only written when different.
 static void write_angle_limits(int j) {
     uint8_t  id = s_cal.servo_id[j];
@@ -43,6 +45,7 @@ static void write_angle_limits(int j) {
     if (cur_ccw != ccw) xl320_write_u16(id, XL320_ADDR_CCW_LIMIT, ccw);
     ESP_LOGI(TAG, "joint %d: angle limits %u..%u ticks%s", j, cw, ccw, changed ? " (written)" : "");
 }
+#endif
 
 static bool bring_up(qmeas_t *m) {
     for (int j = 0; j < 3; j++) {

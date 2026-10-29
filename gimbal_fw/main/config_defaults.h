@@ -9,6 +9,7 @@
 #define APP_JOINT_MONITOR  4   // T16: torque OFF, print ticks/angles + camera attitude while you move joints
 #define APP_MPU_SIXPOSE    5   // re-measure accel offsets (MPU-CALIBRATION.md)
 #define APP_SERVO_SPEEDUP  6   // ONE-SHOT: Return Delay 0 / SRL 1 / 1 Mbit/s on every servo that answers
+#define APP_PIN_TEST       7   // T8 wiring: TX/DIR as plain GPIOs, read the DATA line on RX (no servo power needed)
 #ifndef APP_MODE
 #define APP_MODE           APP_GIMBAL
 #endif
@@ -33,7 +34,7 @@
 #define SERVO_SPEED_RUN          0         // 0 = max -- TODO(tune, T12); Aga used 300
 #define SERVO_BOOT_WALK_MS       3000      // boot speed this long after torque-on, then SERVO_SPEED_RUN
 #define SERVO_TORQUE_LIMIT       1023      // 0..1023; lower it for a first power-up (T16)
-#define SERVO_WRITE_ANGLE_LIMITS 1         // T10: write CW/CCW Angle Limit (EEPROM) from the joint limits at boot
+#define SERVO_WRITE_ANGLE_LIMITS 0         // T10: 1 = write CW/CCW Angle Limit (EEPROM) at boot. Only after T16 (zero_tick/dir measured)
 #define SERVO_QMEAS_STALE_MS     30        // §4.2: fall back to q_cmd when readback is older than this
 #define SERVO_VOLTAGE_MIN_V      6.0f      // XL-320 supply range; refuse torque outside it
 #define SERVO_VOLTAGE_MAX_V      8.4f
