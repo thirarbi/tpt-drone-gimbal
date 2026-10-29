@@ -24,3 +24,5 @@
 
 # LibreOffice lock files
 .~lock.*#
+# pytest bytecode
+/landing_sw/tests/__pycache__/

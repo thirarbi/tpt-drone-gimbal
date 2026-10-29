@@ -18,6 +18,14 @@
 > **Rev 3 (27 Oct): testing policy.** Code first, test on risk (§0). Up-front tests
 > are only for silent or expensive failures; everything else gets a test when it
 > breaks. T8, T10 and T13 are trimmed to match.
+>
+> **Rev 4 (30 Oct): MPU6050 INT is not used for now.** The INT wire is not connected, so
+> `ctrl_task` runs off a 1 ms FreeRTOS tick instead of the data-ready IRQ
+> (`MPU_USE_INT 0` in `config_defaults.h`; set it to 1 and wire INT → GPIO35 to return to
+> the §2.4 / §4.4 design). Consequences: the loop rate is the timer's, not the sensor's, so
+> T4's "1000 ± 5 Hz measured" cannot be verified as written; `missed` counts late wake-ups,
+> `timeouts` is always 0, and duplicate or skipped samples are invisible. This is fine for
+> validating the filter (T5); revisit before quoting final timing numbers.
 
 ---
 
@@ -185,7 +193,7 @@ without telling the team.
 
 | Item | Rate | Note |
 |---|---|---|
-| MPU6050 sample (data-ready IRQ) | 1 kHz | Sensor clocks the loop, so no aliasing and no duplicate samples |
+| MPU6050 sample (data-ready IRQ) | 1 kHz | Sensor clocks the loop, so no aliasing and no duplicate samples. **Rev 4: not wired, currently a 1 ms tick instead** |
 | Attitude loop (`ctrl_task`) | 1 kHz | IMU read + Mahony. Budget ≤ 400 µs; the 14-byte I²C read alone is a few hundred µs at 400 kHz, so measure it |
 | `stab_step` + servo bus (`servo_task`) | 100 Hz | The XL-320 runs its own position loop, so commanding it faster buys nothing. Per cycle: 1 Sync Write + 3 Reads |
 | Servo bus baud | 1 Mbit/s (target) | Aga's servos are at 115200: one cycle there ≈ 2 ms write + 3 × ≈ 2.8 ms reads ≈ 10.5 ms, which **doesn't fit 100 Hz**. At 1 M with Return Delay 0 it's ≈ 1.2 ms. See §4.3 |
@@ -202,7 +210,7 @@ without telling the team.
 | Servo bus DIR | 4 | → 74HC126 pin 1 (1OE), high = ESP32 drives the line. Used as UART2 **RTS** in RS485 half-duplex mode. Add a 10 k pull-**down** so the buffer is off during boot/reset |
 | Servo DATA line | n/a | 74HC126 pin 3 (1Y) → DATA, 10 k pull-up DATA → 3V3, daisy-chained to the 3 servos |
 | MPU6050 SDA / SCL | 21 / 22 | AD0 → GND (addr 0x68). Pull-ups to **3.3 V only**. Aga's sketch runs 100 kHz; we need 400 kHz (§2.4), so keep wires short (< 20 cm) |
-| MPU6050 INT | 35 | input-only, push-pull active-high by default. **Not wired in Aga's sketch** (it polls), so add this wire |
+| MPU6050 INT | 35 | input-only, push-pull active-high by default. **Not wired in Aga's sketch** (it polls), so add this wire. **Rev 4: wire not added and INT not used for now** (`MPU_USE_INT 0`); GPIO35 is left unused |
 | UART1 RX / TX ↔ Pi | 26 / 25 | Moved: UART2 now belongs to the servos. UART1's default pins are flash pins, so it **must** be remapped with `uart_set_pin`. Pi GPIO14 TX → ESP 26, Pi GPIO15 RX ← ESP 25, **common GND** |
 | Status LED | 2 | onboard on most DevKits |
 
@@ -439,6 +447,11 @@ Instructions: PING 0x01, READ 0x02, WRITE 0x03, REBOOT 0x08, SYNC_WRITE 0x83; br
   "slip".
 
 ### 4.4 Loop timing: sensor-driven, ISR does nothing but notify
+
+> **Rev 4:** the code below is the `MPU_USE_INT 1` path. With the INT wire absent
+> (`MPU_USE_INT 0`, the current setting) no ISR is registered, and `ctrl_task` waits with
+> `xTaskDelayUntil(&last_wake, pdMS_TO_TICKS(1))` instead of `ulTaskNotifyTake`. That
+> needs `CONFIG_FREERTOS_HZ=1000`, which the build now checks with a `_Static_assert`.
 
 ```c
 static TaskHandle_t s_ctrl;
@@ -680,9 +693,12 @@ Unplug servo power before rewiring, *every* time.
   `frames.camera_to_body_rotation(q) == gimbal_kinematics.fk(q) @ R_link_optical`.
 - Physical confirmation comes in T18 (marker to the drone's right → body y > 0).
 - **Done when:** determinant test + consistency test green, suite still passes.
+> **30 Oct:** step (3) was still open: the sim integrated body Forward into the renderer's world x
+> (the renderer's world is x = Right, y = Forward), so `main --sim` stopped landing. Fixed in
+> `main.py`; `tests/test_main_sim.py` keeps it fixed.
+
 
 ### ✅ T4 · Mon 12 · MPU6050 driver + 1 kHz data-ready loop + dev logger · 4 h
-> **Status (29 Oct): code finished and builds, NOT tested on hardware.** Waiting on circuit corrections from my partner (incl. the MPU INT → GPIO35 wire). Still to do once the board works: read the 1 Hz stats line in `app_main` (rate, `missed`, read time, flat-Z raw count). The binary logger, `tools/serial_log.py` and the two 60 s logs are deferred (T5's real-data checks need them).
 
 This part ensures that the signal sent from the gyro and accelerometer is a steady stream of samples at exactly 1000 per second. It's the foundation for the attitude filter. This part is crucial so if something broke downstream, re-check this part.
 
@@ -700,8 +716,8 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
   The DLPF setting changes the gyro's base output rate (8 kHz vs 1 kHz), so check it.
 - **Done when:** 1000 ± 5 Hz measured, logs saved, still-log noise in `NOTES.md`.
 
-### T5 · Tue 13 · Attitude filter (Python → C) · 4 h
-
+### ✅ T5 · Tue 13 · Attitude filter (Python → C) · 4 h
+> Finished and builds. There's 
 - Prototype Mahony in Python on yesterday's logs: gyro bias subtraction, quaternion
   integration, accel correction with **gating** (skip accel correction when
   `| |a| − 1 g | > 0.15 g`, since drone accelerations would tilt your "down").
@@ -712,13 +728,13 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
   drift < 0.5°.
 - **Done when:** plots of roll/pitch for both logs; C matches Python.
 
-### T6 · Wed 14 · Progress-report input · 2 h
+### ✅ T6 · Wed 14 · Progress-report input · 2 h
 
 - To Aga: architecture diagram (§2.1), interface contract, Bab 4.2 table, what's
   done/next, risks. Plots from T4/T5 make good figures.
 
-### T7 · Wed 14 (stretch) · Gimbal sim via ctypes · 3 h
-
+### ⏭️ T7 · Wed 14 (stretch) · Gimbal sim via ctypes · 3 h
+> **SKIPPED** since the circuit is already ready, we'll have this test be done along the servo test (October 30th 2026)
 - `stab.c` first version (§4.2). Build `libgimbal_math.so`; `exp_gimbal_stab.py`
   drives a simulated base (roll/pitch sinusoid 0.5–3 Hz, ±10°) + simple servo model
   (first-order lag + rate limit + 0.29° quantisation), calls the *real* `stab_step` → camera pointing error vs time → new Bab 4.2
@@ -727,7 +743,33 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 
 ---
 
-### T8 · Thu 15 (lab) · XL-320 bus driver, one servo · 5 h
+### ⚠️ T8 · Thu 15 (lab) · XL-320 bus driver, one servo · 5 h
+> **Code done, hardware test FAILED (30 Oct): blocked on a wiring/circuit check.**
+> - **Done and verified on the laptop:** `dxl_packet.c` (CRC, build, byte-wise parser),
+>   `host_test/test_dxl_packet.c` green, `xl320.c` / `xl320.h` (init in RS485 half-duplex,
+>   PING, READ, WRITE, SYNC_WRITE, torque, SRL, baud), `T8_BUS_TEST` / `T8_SPEEDUP` flags.
+>   Firmware builds for the ESP32 with no warnings.
+> - **Hardware result:** PING and READ time out (`-1`) with servos connected and powered.
+>   A scan of every ID 1–253 at 115200, 1 M, 57600 and 9600 got **0 replies**, so it is not
+>   an ID or baud problem. Aga's manual-GPIO DIR method gave the same result and **0 echo
+>   bytes**, so it is not RS485 mode or RTS polarity either.
+> - **Where it points:** a GPIO-only pin test shows GPIO16 (RX) stays **high whatever
+>   GPIO17 (TX) and DIR do**, and an internal pull-down on GPIO16 wins (reads 0), so the
+>   DATA net with its 10 k pull-up is not visible from GPIO16. This is a wiring/circuit
+>   problem between the ESP32 and the 74HC126 / DATA line, not the firmware.
+> - **To do before resuming (needs the circuit, not code):** check continuity GPIO16 ↔
+>   74HC126 pin 3 ↔ servo DATA; GPIO17 ↔ pin 2; GPIO4 ↔ pin 1; pin 14 = 3.3 V, pin 7 = GND;
+>   10 k from DATA to 3V3 (DATA idles at ~3.3 V). Then rerun the pin test and the lab
+>   sequence below from "scope TX + DIR".
+> - **Not yet done:** scope of TX/DIR, PING/READ/WRITE/SYNC_WRITE on a real servo, bus
+>   speed-up, timings in `NOTES.md`. T9 onward depends on this, so re-plan if the check
+>   takes long.
+>
+> **30 Oct, `demo-oct30`:** `APP_PIN_TEST` checks exactly this wiring without servo power;
+> `APP_BUS_SCAN` / `APP_SERVO_SWEEP` replace `T8_BUS_TEST`. `txrx` now waits for TX done before
+> starting the reply timeout (at 115200 a queued SYNC WRITE + READ + reply used ~4.5 of the 5 ms).
+> Run `TESTING.md` steps 2, 3, 5.
+
 
 - `dxl_packet.c` first, **on the laptop**: `crc16_dxl`, `dxl_build`,
   `dxl_parser_feed` (§4.3). Host tests up front, since lab time is expensive:
@@ -750,7 +792,12 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - **Done when:** one servo goes to commanded angles repeatably from ESP-IDF, bus
   timings in `NOTES.md`, host tests green.
 
-### T9 · Fri 16 · Control task, boot sequence, timing · 4 h
+### 🔧 T9 · Fri 16 · Control task, boot sequence, timing · 4 h
+> 🔧 = code done on branch `demo-oct30`, laptop-tested, hardware run pending (see `TESTING.md`).
+> `servo_task.c`, `stab_tick()` in `ctrl_task.c`, §4.6 boot order in `app_main.c` incl. the 2 s gyro
+> calibration; 1 Hz stats (loop, servo cycle, overruns, timeouts, bad replies). `comms_task` is
+> complete, not a stub. Check: `TESTING.md` step 7.
+
 
 - `ctrl_task` + `servo_task` / `app_main` per §4.4 and §4.6 with real IMU + one
   servo. Loop stats: min/avg/max loop time and missed notifications; servo cycle
@@ -759,7 +806,13 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - **Done when:** max loop time < 1 ms over 10 min, servo cycle ≤ 10 ms, no
   task-watchdog resets, boot sequence walks the servo to NADIR without a jerk.
 
-### T10 · Sat 17 · Three servos + calibration in NVS + on-target tests · 4 h
+### 🔧 T10 · Sat 17 · Three servos + calibration in NVS + on-target tests · 4 h
+> 🔧 Works with whichever joints answer at boot: a silent ID = joint held at 0, which is how the
+> 2-servo rig runs roll + pitch. Calibration = compile-time defaults in `calib.c` (NVS not done).
+> Angle limits behind `SERVO_WRITE_ANGLE_LIMITS`, off until T16 gives real `zero_tick`/`dir`.
+> Sync Read: not verified (the XL-320 page in `datasheets/` doesn't list instructions); not needed
+> now, 2 servos at 115200 ≈ 7.5 ms per cycle.
+
 
 - Extend to 3 servos: one Sync Write for all goals, three Reads. (Check whether the
   XL-320 e-manual lists **Sync Read**; if it does, 3 round trips become 1.)
@@ -771,7 +824,11 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
   ESP32**. `-Wdouble-promotion` already covers the likely float slips.
 - **Done when:** 3 servos respond independently; angle limits written.
 
-### T11 · Sun 18 · Single-axis stabilisation (pitch) · 4 h
+### 🔧 T11 · Sun 18 · Single-axis stabilisation (pitch) · 4 h
+> 🔧 `stab_step` (IK mode + PID fallback) in `gimbal_math/stab.c`, closed-loop host test
+> `test_stab.c` (3 joints, 2 joints, yaw drift, stale readback, limits, PID signs). Logging:
+> `LOG_CSV_HZ` + `tools/serial_log.py` (plot + error RMS). `TESTING.md` step 7.
+
 
 - `stab_step` with only pitch active (other joints held). Hand-tilt the base:
   camera pitch should stay put. Implement the PID fallback mode too (§4.2).
@@ -780,6 +837,10 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - **Done when:** ±15° base tilt → camera pitch error < ~2°, logged plot.
 
 ### T12 · Mon 19 · Tuning + open-loop characterisation · 4 h
+> **Hardware only.** Knobs: `STAB_GAIN_K` (0.3 ≈ 5.7 Hz now), `STAB_OMEGA_MAX_RAD_S`,
+> `SERVO_SPEED_RUN`; servo P gain is not exposed yet (`xl320_write_u8(id, 29, P)`). Fault
+> auto-recovery not done (cut list): bring-up reboots a faulted servo, run-time error bytes go to TELEM.
+
 
 - Tune `K`, `ω_max`, servo P gain (addr 29) and Moving Speed. Characterise: servo
   step response (10° goal step, Present Position logged at 100 Hz), dead time,
@@ -789,7 +850,10 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
   log every event.
 - **Done when:** numbers in `NOTES.md`; tuning committed as defaults.
 
-### T13 · Tue 20 · Protocol, both sides · 5 h
+### 🔧 T13 · Tue 20 · Protocol, both sides · 5 h
+> 🔧 C: `components/proto`, `comms_task.c`. Python: `gimbal_proto.py`, `ESP32Gimbal`. The C test
+> writes a golden frame that pytest decodes. Done-when check: `TESTING.md` step 8 (`gimbal_console`).
+
 
 - C: `proto.c` parser as a byte-wise state machine (SYNC1→SYNC2→HDR→PAYLOAD→CRC),
   resync on bad CRC, `comms_task` on the ESP-IDF UART driver (`uart_driver_install`
@@ -804,13 +868,19 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - **Done when:** from a Pi Python shell, `g.set_angles(-90, 0, 0)` moves the gimbal and
   `g.get_angles()` returns live joint angles.
 
-### T14 · Wed 21 · Link robustness · 2 h
+### 🔧 T14 · Wed 21 · Link robustness · 2 h
+> 🔧 `ESP32Gimbal.latency_s` (seq echo), firmware watchdog, CRC count in the ESP32 status line;
+> `gimbal_console` prints the round trip. Cable-pull: `TESTING.md` step 8.
+
 
 - Measure command→TELEM round-trip latency (echo `seq`), CRC error rate over 10 min,
   behaviour on cable pull (watchdog → NADIR within 200 ms) and reconnect.
 - **Done when:** latency number in `NOTES.md`; cable-pull test passes.
 
-### T15 · Wed 21 · Pi camera capture module · 3 h
+### 🔧 T15 · Wed 21 · Pi camera capture module · 3 h
+> 🔧 `camera.py`, profiles `ov9281` and `imx477` (ArduCam HQ, test camera). Photon→pose latency
+> per frame printed by `demo_vision.py`. Needs the Pi.
+
 
 - `camera.py` with picamera2: lo-res stream at `DETECT_RES`, 30 fps, mono/Y plane →
   `numpy` → `markers.py`. On Pi 5 the OV9281 may need `camera_auto_detect=0` +
@@ -821,6 +891,9 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 ---
 
 ### T16 · Thu 22 (lab) · 3-axis bring-up on Pasha's gimbal · 4–5 h
+> **Tools ready:** `APP_JOINT_MONITOR` for `zero_tick` / `dir` / `R_imu_cam` (`TESTING.md` step 6);
+> the `R_imu_cam` recipe is in `gimbal_fw/README.md`.
+
 
 - Mount, then **with torque off** move each joint by hand through its range and check
   cables, watching Present Position live (it must never enter the 60° dead zone).
@@ -835,13 +908,17 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - **Done when:** all 3 joints track commanded angles, no collisions at limits.
 
 ### T17 · Fri 23 · 3-axis stabilisation tuning + measurement · 4 h
+> **Hardware only.** `serial_log.py plot` prints camera error RMS / max for the poster.
+
 
 - Full `stab_step`. Hand-disturb the base in roll, pitch, yaw. Log and compute
   **pointing error RMS and max** under a repeatable disturbance (e.g. tilt ±15° at
   ~1 Hz by hand for 30 s; do it 3 times).
 - **Done when:** poster numbers + plot; tuned values committed.
 
-### T18 · Sat 24 · Vision → gimbal end-to-end · 5 h
+### 🔧 T18 · Sat 24 · Vision → gimbal end-to-end · 5 h
+> 🔧 `demo_vision.py` (also `main` without `--sim`), `calibrate_camera.py`. `TESTING.md` step 9.
+
 
 - **Camera calibration** if the Sept K isn't real (`config.CAM_K` is still a
   placeholder): checkerboard, OpenCV `calibrateCamera` at **DETECT_RES** (or
@@ -854,7 +931,10 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - **Done when:** hand-held marker → live body-frame position printed with correct
   signs; gimbal search/hold modes driven by the FSM.
 
-### T19 · Sun 25 · Demo path + feature freeze · 4 h
+### 🔧 T19 · Sun 25 · Demo path + feature freeze · 4 h
+> 🔧 `scripts/demo_sim.sh`, `scripts/demo_pi.sh`, `scripts/fw.sh`. The sim had stopped landing
+> after T3c (see T3c note); fixed. Tag `demo-rc1` after the hardware run.
+
 
 - One-command launchers (`scripts/demo_gimbal.sh`, `scripts/demo_sim.sh`), rerun
   `run_all_experiments`, update the results table. (Could: gimbal-in-the-loop sim.)
@@ -862,6 +942,8 @@ This part ensures that the signal sent from the gyro and accelerometer is a stea
 - Tag `demo-rc1`. **Feature freeze tonight.**
 
 ### T20 · Mon 26 · Rehearsal + fallbacks · 3–4 h
+> Demo run order and the backup-video list: end of `TESTING.md`.
+
 
 - Two full rehearsals with the team; a written demo script (who says what, 3–5 min).
 - Record backup videos of every Must/Should item. Spares: ESP32 (pre-flashed),
@@ -879,7 +961,7 @@ still surface (gyro cal) · logs recording · backup videos on laptop.
 | Needed from | What | By |
 |---|---|---|
 | Pasha | Axis order, servo-ID-to-joint mapping, horn orientation / joint zero, joint limits, camera balance | Fri 9 (info), Thu 22 (hardware) |
-| Aga | Pin map sign-off (Pi on UART1 25/26, DIR pull-down, MPU INT wire), servo power (7.4 V, caps, common ground), Pi↔ESP32 harness | Fri 9 (draft), Wed 21 (final) |
+| Aga | Pin map sign-off (Pi on UART1 25/26, DIR pull-down, ~~MPU INT wire~~ on hold, Rev 4), servo power (7.4 V, caps, common ground), Pi↔ESP32 harness | Fri 9 (draft), Wed 21 (final) |
 | Aga | Progress-report format/deadline | before Wed 14 |
 | You → Pasha | Results, plots, architecture diagram | Mon 26 |
 
