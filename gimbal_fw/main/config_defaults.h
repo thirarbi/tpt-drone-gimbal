@@ -31,6 +31,10 @@
 #define MAHONY_KP   1.0f    // TODO(tune, T5): starting gain
 #define MAHONY_KI   0.02f   // TODO(tune, T5): starting gain
 #define MAHONY_ACCEL_GATE_G  0.15f  // skip accel correction when │|a|-1g│ > this
+#define MAHONY_INTEGRAL_MAX_RAD_S  0.05f
+#define MAHONY_KP_BOOT          10.0f // Converge fast after boot
+#define MAHONY_WARMUP_SAMPLES   1000  // ~1 s at 1 kHz
+
 
 // --- MPU6050 config, §T4 (fixed by plan, not pending) ---
 #define MPU_GYRO_RANGE_DPS    1000

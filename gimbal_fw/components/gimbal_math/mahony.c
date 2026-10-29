@@ -7,6 +7,7 @@ void mahony_init(mahony_t *m, float kp, float ki) {
     m->kp = kp;
     m->ki = ki;
     m->gate_g = 0.15f;
+    m->i_max = 0.05f;
 }
 
 void mahony_update(mahony_t *m, const float gyro_rads[3], const float acc_g[3], float dt) {
@@ -25,7 +26,14 @@ void mahony_update(mahony_t *m, const float gyro_rads[3], const float acc_g[3], 
         e[2] = ax*vy - ay*vx;
     }
 
-    for (int i = 0; i < 3; i++) m->integ[i] += m->ki * e[i] * dt;
+        for (int i = 0; i < 3; i++) {
+        m->integ[i] += m->ki * e[i] * dt;
+
+        //Anti-windup
+        if (m->integ[i] >  m->i_max) m->integ[i] =  m->i_max;
+        if (m->integ[i] < -m->i_max) m->integ[i] = -m->i_max;
+    }
+
     float gx = gyro_rads[0] + m->kp * e[0] + m->integ[0];
     float gy = gyro_rads[1] + m->kp * e[1] + m->integ[1];
     float gz = gyro_rads[2] + m->kp * e[2] + m->integ[2];

@@ -12,9 +12,9 @@ static const calib_t s_default_calib = {
     .gyro_bias      = {0.0f, 0.0f, 0.0f},          // TODO(measured at boot)
     .R_imu_cam       = {                             // TODO(measure T0.5): identity until confirmed
         .m = {
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
-            {0.0f, 0.0f, 1.0f},
+            {1.0f,  0.0f,  0.0f},
+            {0.0f, -1.0f,  0.0f}, // TEMP bench: 180 deg about x (det = +1)
+            {0.0f,  0.0f, -1.0f},
         }
     },
 };

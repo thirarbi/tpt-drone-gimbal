@@ -3,9 +3,10 @@
 
 typedef struct {
     quat_t q;
-    float  integ[3];
-    float  kp, ki;
-    float  gate_g;
+    float integ[3];
+    float kp, ki;
+    float gate_g;
+    float i_max;
 } mahony_t;
 
 void mahony_init(mahony_t *m, float kp, float ki);

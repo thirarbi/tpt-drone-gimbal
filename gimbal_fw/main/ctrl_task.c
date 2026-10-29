@@ -7,9 +7,15 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "mahony.h"
+#include "calib.h"
+
 
 ctrl_stats_t g_ctrl_stats;
 static TaskHandle_t s_ctrl;
+static mahony_t s_mahony;
+static uint32_t s_warm;
+static calib_t  s_cal;
 
 static void IRAM_ATTR imu_drdy_isr(void * arg) {
     BaseType_t woken = pdFALSE;
@@ -35,6 +41,28 @@ static void ctrl_task(void *arg) {
         }
         uint32_t dur = (uint32_t)(esp_timer_get_time() - t0);
 
+        mpu6050_sample_t s;
+        mpu6050_scale(&raw, &s);
+
+        float g_imu[3] = { s.gyro_rads[0] - s_cal.gyro_bias[0],
+                           s.gyro_rads[1] - s_cal.gyro_bias[1],
+                           s.gyro_rads[2] - s_cal.gyro_bias[2] };
+        float g_cam[3], a_cam[3];
+        mat3_vec(&s_cal.R_imu_cam, g_imu, g_cam);
+        mat3_vec(&s_cal.R_imu_cam, s.acc_g, a_cam);
+        s_mahony.kp = (s_warm < MAHONY_WARMUP_SAMPLES) ? MAHONY_KP_BOOT : MAHONY_KP;
+        s_warm++;
+        mahony_update(&s_mahony, g_cam, a_cam, (float)cnt / (float)IMU_SAMPLE_RATE_HZ);
+
+        uint32_t loop = (uint32_t)(esp_timer_get_time() - t0);
+        g_ctrl_stats.loop_sum_us += loop;
+        if (loop > g_ctrl_stats.loop_max_us) {
+            g_ctrl_stats.loop_max_us = loop;
+        }
+
+        g_ctrl_stats.q = s_mahony.q;
+
+
         g_ctrl_stats.n++;
         g_ctrl_stats.read_sum_us += dur;
         if (dur > g_ctrl_stats.read_max_us) g_ctrl_stats.read_max_us = dur;
@@ -44,6 +72,12 @@ static void ctrl_task(void *arg) {
 }
 
 void ctrl_task_start(void) {
+    
+    calib_load(&s_cal);
+    mahony_init(&s_mahony, MAHONY_KP, MAHONY_KI);
+    s_mahony.gate_g = MAHONY_ACCEL_GATE_G;
+    s_mahony.i_max = MAHONY_INTEGRAL_MAX_RAD_S;
+
     // Task must be put first so s_ctrl is valid. Only then, interrupt
     xTaskCreatePinnedToCore(ctrl_task, "ctrl", 4096, NULL, configMAX_PRIORITIES - 2, &s_ctrl, 1);
 

@@ -11,6 +11,10 @@
 # Host test binary (built by host_test/Makefile)
 /gimbal_fw/host_test/test_rot
 /gimbal_fw/host_test/test_kinematics
+/gimbal_fw/host_test/test_mahony
+
+# Python bytecode (gimbal_fw/tools imports mahony_ref)
+/gimbal_fw/tools/__pycache__/
 
 # Editor / app state
 /.vscode/
