@@ -29,6 +29,14 @@ mat3_t mat3_mul(const mat3_t *A, const mat3_t * B) {
     return C;
 }
 
+// For a rotation matrix the transpose is the inverse
+mat3_t mat3_transpose(const mat3_t *A) {
+    mat3_t T;
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++) T.m[i][j] = A->m[j][i];
+    return T;
+}
+
 float wrap_pi(float a) {
     a = fmodf(a + PI_F, 2.0f * PI_F);
     if (a < 0.0f) { 
